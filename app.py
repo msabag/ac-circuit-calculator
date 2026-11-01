@@ -2,29 +2,32 @@ import math
 import matplotlib.pyplot as plt
 import streamlit as st
 
-# הגדרת תצורת עמוד - עיצוב בהיר ונקי
+# הגדרת תצורת עמוד
 st.set_page_config(
     page_title="מחשבון AC טורי",
     page_icon="🦆",
     layout="wide"
 )
 
-# סגנון CSS מותאם אישית: רקע בהיר, גופנים בולטים ועיצוב מאיר עיניים
+# תיקון צבעים וגופנים - עובד מעולה גם במצב לילה וגם במצב יום
 st.markdown("""
     <style>
-    .main {
-        background-color: #f8f9fa;
+    /* עיצוב כרטיסיות התוצאות */
+    div[data-testid="stMetric"] {
+        background-color: #ffffff !important;
+        border: 2px solid #cbd5e1 !important;
+        border-radius: 12px !important;
+        padding: 15px !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
     }
-    h1 {
-        color: #1e3a8a;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* צבע טקסט בתוך הכרטיסיות */
+    div[data-testid="stMetric"] label {
+        color: #334155 !important;
+        font-weight: bold !important;
     }
-    .stMetric {
-        background-color: #ffffff;
-        padding: 15px;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-        border: 1px solid #e2e8f0;
+    div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+        color: #0f172a !important;
+        font-weight: bold !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -36,12 +39,11 @@ with col_title:
     st.write("ניתוח חשמלי מלא, חישוב מתחים וייצוג ויזואלי מאיר עיניים.")
 
 with col_duck:
-    # הצגת ברווז האמבטיה החסידי בראש העמוד
     st.markdown("""
-    <div style="text-align: center; font-size: 60px; line-height: 1;">
+    <div style="text-align: center; font-size: 50px; line-height: 1;">
         🎩<br>🦆
     </div>
-    <div style="text-align: center; font-weight: bold; color: #1e3a8a; font-size: 12px;">
+    <div style="text-align: center; font-weight: bold; color: #38bdf8; font-size: 13px; margin-top: 5px;">
         רב-ברווז בסיעתא דשמיא
     </div>
     """, unsafe_allow_html=True)
@@ -77,7 +79,7 @@ P = I**2 * R
 Q = I**2 * Xc
 S = V * I
 
-# --- הצגת תוצאות בערכים מודגשים ---
+# --- הצגת תוצאות ---
 st.subheader("📊 תוצאות החישוב")
 
 col1, col2, col3 = st.columns(3)
@@ -85,7 +87,7 @@ col1.metric("עכבה כוללת (Z)", f"{Z:.2f} Ω")
 col2.metric("זרם במעגל (I)", f"{I:.2f} A")
 col3.metric("גורם הספק (cos φ)", f"{pf:.3f}")
 
-st.write("") # מרווח
+st.write("")
 
 col4, col5, col6 = st.columns(3)
 col4.metric("מתח מקור (V)", f"{V:.2f} V")
@@ -103,40 +105,38 @@ st.info(f"""
 - **זווית מופע ($\phi$):** {phi_deg:.2f}°
 """)
 
-# --- חלק ויזואלי: ציור המשולשים בגרף בהיר ---
+# --- חלק ויזואלי: ציור המשולשים ---
 st.subheader("📐 ייצוג ויזואלי של המשולשים")
 
-# הגדרת סגנון גרף בהיר ונקי ב-Matplotlib
-plt.style.use('seaborn-v0_8-whitegrid' if 'seaborn-v0_8-whitegrid' in plt.style.available else 'default')
-fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 4.5), facecolor='#ffffff')
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 4.5))
 
 # 1. משולש עכבות
-ax1.quiver(0, 0, R, 0, angles='xy', scale_units='xy', scale=1, color='#1d4ed8', label=f'R = {R:.1f} Ω')
+ax1.quiver(0, 0, R, 0, angles='xy', scale_units='xy', scale=1, color='#2563eb', label=f'R = {R:.1f} Ω')
 ax1.quiver(R, 0, 0, -Xc, angles='xy', scale_units='xy', scale=1, color='#dc2626', label=f'Xc = {Xc:.1f} Ω')
 ax1.quiver(0, 0, R, -Xc, angles='xy', scale_units='xy', scale=1, color='#16a34a', label=f'Z = {Z:.1f} Ω')
 ax1.set_xlim(-R*0.1, R*1.2)
 ax1.set_ylim(-Xc*1.2, Xc*0.2)
-ax1.set_title("משולש עכבות", fontsize=12, fontweight='bold', color='#1e293b')
+ax1.set_title("משולש עכבות", fontsize=12, fontweight='bold')
 ax1.grid(True, linestyle='--', alpha=0.6)
 ax1.legend(loc='lower left')
 
 # 2. משולש מתחים
-ax2.quiver(0, 0, VR, 0, angles='xy', scale_units='xy', scale=1, color='#1d4ed8', label=f'VR = {VR:.1f} V')
+ax2.quiver(0, 0, VR, 0, angles='xy', scale_units='xy', scale=1, color='#2563eb', label=f'VR = {VR:.1f} V')
 ax2.quiver(VR, 0, 0, -VC, angles='xy', scale_units='xy', scale=1, color='#dc2626', label=f'VC = {VC:.1f} V')
 ax2.quiver(0, 0, VR, -VC, angles='xy', scale_units='xy', scale=1, color='#16a34a', label=f'V = {V:.1f} V')
 ax2.set_xlim(-VR*0.1, VR*1.2)
 ax2.set_ylim(-VC*1.2, VC*0.2)
-ax2.set_title("משולש מתחים", fontsize=12, fontweight='bold', color='#1e293b')
+ax2.set_title("משולש מתחים", fontsize=12, fontweight='bold')
 ax2.grid(True, linestyle='--', alpha=0.6)
 ax2.legend(loc='lower left')
 
 # 3. משולש הספקים
-ax3.quiver(0, 0, P, 0, angles='xy', scale_units='xy', scale=1, color='#1d4ed8', label=f'P = {P:.1f} W')
+ax3.quiver(0, 0, P, 0, angles='xy', scale_units='xy', scale=1, color='#2563eb', label=f'P = {P:.1f} W')
 ax3.quiver(P, 0, 0, -Q, angles='xy', scale_units='xy', scale=1, color='#dc2626', label=f'Q = {Q:.1f} VAR')
 ax3.quiver(0, 0, P, -Q, angles='xy', scale_units='xy', scale=1, color='#16a34a', label=f'S = {S:.1f} VA')
 ax3.set_xlim(-P*0.1, P*1.2)
 ax3.set_ylim(-Q*1.2, Q*0.2)
-ax3.set_title("משולש הספקים", fontsize=12, fontweight='bold', color='#1e293b')
+ax3.set_title("משולש הספקים", fontsize=12, fontweight='bold')
 ax3.grid(True, linestyle='--', alpha=0.6)
 ax3.legend(loc='lower left')
 
