@@ -9,10 +9,9 @@ st.set_page_config(
     layout="wide"
 )
 
-# תיקון צבעים וגופנים - עובד מעולה גם במצב לילה וגם במצב יום
+# תיקון צבעים וגופנים לכרטיסיות
 st.markdown("""
     <style>
-    /* עיצוב כרטיסיות התוצאות */
     div[data-testid="stMetric"] {
         background-color: #ffffff !important;
         border: 2px solid #cbd5e1 !important;
@@ -20,7 +19,6 @@ st.markdown("""
         padding: 15px !important;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
     }
-    /* צבע טקסט בתוך הכרטיסיות */
     div[data-testid="stMetric"] label {
         color: #334155 !important;
         font-weight: bold !important;
@@ -36,7 +34,7 @@ st.markdown("""
 col_title, col_duck = st.columns([4, 1])
 with col_title:
     st.title("⚡ מחשבון מעגל AC טורי (R-C)")
-    st.write("ניתוח חשמלי מלא, חישוב מתחים וייצוג ויזואלי מאיר עיניים.")
+    st.write("ניתוח חשמלי מלא, חישוב מתחים וייצוג ויזואלי ברור.")
 
 with col_duck:
     st.markdown("""
@@ -105,40 +103,30 @@ st.info(f"""
 - **זווית מופע ($\phi$):** {phi_deg:.2f}°
 """)
 
-# --- חלק ויזואלי: ציור המשולשים ---
+st.markdown("---")
 st.subheader("📐 ייצוג ויזואלי של המשולשים")
 
-fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 4.5))
+# פונקציית עזר לציור גרף בודד וגדול
+def plot_triangle(x, y, x_label, y_label, hypotenuse_label, title, unit):
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.quiver(0, 0, x, 0, angles='xy', scale_units='xy', scale=1, color='#2563eb', label=f'{x_label} = {x:.2f} {unit}')
+    ax.quiver(x, 0, 0, -y, angles='xy', scale_units='xy', scale=1, color='#dc2626', label=f'{y_label} = {y:.2f} {unit}')
+    ax.quiver(0, 0, x, -y, angles='xy', scale_units='xy', scale=1, color='#16a34a', label=f'{hypotenuse_label} = {math.sqrt(x**2 + y**2):.2f} {unit}')
+    
+    ax.set_xlim(-x*0.1, x*1.25)
+    ax.set_ylim(-y*1.25, y*0.2)
+    ax.set_title(title, fontsize=14, fontweight='bold', pad=10)
+    ax.grid(True, linestyle='--', alpha=0.6)
+    ax.legend(loc='lower left', fontsize=11)
+    plt.tight_layout()
+    return fig
 
-# 1. משולש עכבות
-ax1.quiver(0, 0, R, 0, angles='xy', scale_units='xy', scale=1, color='#2563eb', label=f'R = {R:.1f} Ω')
-ax1.quiver(R, 0, 0, -Xc, angles='xy', scale_units='xy', scale=1, color='#dc2626', label=f'Xc = {Xc:.1f} Ω')
-ax1.quiver(0, 0, R, -Xc, angles='xy', scale_units='xy', scale=1, color='#16a34a', label=f'Z = {Z:.1f} Ω')
-ax1.set_xlim(-R*0.1, R*1.2)
-ax1.set_ylim(-Xc*1.2, Xc*0.2)
-ax1.set_title("משולש עכבות", fontsize=12, fontweight='bold')
-ax1.grid(True, linestyle='--', alpha=0.6)
-ax1.legend(loc='lower left')
+# הצגת המשולשים אחד מתחת לשני (מוגדלים ומותאמים לטלפון)
+st.write("#### 1. משולש עכבות")
+st.pyplot(plot_triangle(R, Xc, "R", "Xc", "Z", "משולש עכבות (Impedance Triangle)", "Ω"))
 
-# 2. משולש מתחים
-ax2.quiver(0, 0, VR, 0, angles='xy', scale_units='xy', scale=1, color='#2563eb', label=f'VR = {VR:.1f} V')
-ax2.quiver(VR, 0, 0, -VC, angles='xy', scale_units='xy', scale=1, color='#dc2626', label=f'VC = {VC:.1f} V')
-ax2.quiver(0, 0, VR, -VC, angles='xy', scale_units='xy', scale=1, color='#16a34a', label=f'V = {V:.1f} V')
-ax2.set_xlim(-VR*0.1, VR*1.2)
-ax2.set_ylim(-VC*1.2, VC*0.2)
-ax2.set_title("משולש מתחים", fontsize=12, fontweight='bold')
-ax2.grid(True, linestyle='--', alpha=0.6)
-ax2.legend(loc='lower left')
+st.write("#### 2. משולש מתחים")
+st.pyplot(plot_triangle(VR, VC, "VR", "VC", "V", "משולש מתחים (Voltage Triangle)", "V"))
 
-# 3. משולש הספקים
-ax3.quiver(0, 0, P, 0, angles='xy', scale_units='xy', scale=1, color='#2563eb', label=f'P = {P:.1f} W')
-ax3.quiver(P, 0, 0, -Q, angles='xy', scale_units='xy', scale=1, color='#dc2626', label=f'Q = {Q:.1f} VAR')
-ax3.quiver(0, 0, P, -Q, angles='xy', scale_units='xy', scale=1, color='#16a34a', label=f'S = {S:.1f} VA')
-ax3.set_xlim(-P*0.1, P*1.2)
-ax3.set_ylim(-Q*1.2, Q*0.2)
-ax3.set_title("משולש הספקים", fontsize=12, fontweight='bold')
-ax3.grid(True, linestyle='--', alpha=0.6)
-ax3.legend(loc='lower left')
-
-plt.tight_layout()
-st.pyplot(fig)
+st.write("#### 3. משולש הספקים")
+st.pyplot(plot_triangle(P, Q, "P", "Q", "S", "משולש הספקים (Power Triangle)", "VA/W/VAR"))
