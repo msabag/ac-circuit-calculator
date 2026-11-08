@@ -34,7 +34,7 @@ st.markdown("""
 col_title, col_duck = st.columns([4, 1])
 with col_title:
     st.title("⚡ מחשבון מעגל AC טורי (R-C)")
-    st.write(" ניתוח חשמלי מלא, חישוב ישיר והפוך, וייצוג ויזואלי ברור.")
+    st.write("ניתוח חשמלי מלא, חישוב ישיר והפוך, וייצוג ויזואלי ברור.")
 
 with col_duck:
     st.markdown("""
@@ -125,7 +125,39 @@ st.markdown("---")
 
 # --- פירוט נתונים ---
 st.write("### 🔹 פירוט רכיבים, מתחים וזווית")
-st.info(f"""
-- **התנגדות הנגד ($R$):** {R:.2f} Ω
-- **היגוי קיבולי ($X_C$):** {Xc:.2f} Ω
-- **קיבול הקבל ($C$):** {uF:.2f} µF (בדר f = {f:.1
+st.info(
+    f"- **התנגדות הנגד ($R$):** {R:.2f} Ω\n"
+    f"- **היגוי קיבולי ($X_C$):** {Xc:.2f} Ω\n"
+    f"- **קיבול הקבל ($C$):** {uF:.2f} µF (בתדר f = {f:.1f} Hz)\n"
+    f"- **מתח על הנגד ($V_R$):** {VR:.2f} V\n"
+    f"- **מתח על הקבל ($V_C$):** {VC:.2f} V\n"
+    f"- **זווית מופע ($\phi$):** {phi_deg:.2f}°"
+)
+
+st.markdown("---")
+st.subheader("📐 ייצוג ויזואלי של המשולשים")
+
+# פונקציית עזר לציור גרף בודד וגדול
+def plot_triangle(x, y, x_label, y_label, hypotenuse_label, title, unit):
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.quiver(0, 0, x, 0, angles='xy', scale_units='xy', scale=1, color='#2563eb', label=f'{x_label} = {x:.2f} {unit}')
+    ax.quiver(x, 0, 0, -y, angles='xy', scale_units='xy', scale=1, color='#dc2626', label=f'{y_label} = {y:.2f} {unit}')
+    ax.quiver(0, 0, x, -y, angles='xy', scale_units='xy', scale=1, color='#16a34a', label=f'{hypotenuse_label} = {math.sqrt(x**2 + y**2):.2f} {unit}')
+    
+    ax.set_xlim(-x*0.1, x*1.25)
+    ax.set_ylim(-y*1.25, y*0.2)
+    ax.set_title(title, fontsize=14, fontweight='bold', pad=10)
+    ax.grid(True, linestyle='--', alpha=0.6)
+    ax.legend(loc='lower left', fontsize=11)
+    plt.tight_layout()
+    return fig
+
+# הצגת המשולשים
+st.write("#### 1. משולש עכבות")
+st.pyplot(plot_triangle(R, Xc, "R", "Xc", "Z", "משולש עכבות (Impedance Triangle)", "Ω"))
+
+st.write("#### 2. משולש מתחים")
+st.pyplot(plot_triangle(VR, VC, "VR", "VC", "V", "משולש מתחים (Voltage Triangle)", "V"))
+
+st.write("#### 3. משולש הספקים")
+st.pyplot(plot_triangle(P, Q, "P", "Q", "S", "משולש הספקים (Power Triangle)", "VA/W/VAR"))
