@@ -35,7 +35,7 @@ st.markdown("""
 col_title, col_duck = st.columns([4, 1])
 with col_title:
     st.title("⚡ מחשבון מעגל AC טורי (R-C)")
-    st.write("ניתוח חשמלי מלא, כולל זוויות מופע, משולשים וגרפי סינוס בזמן.")
+    st.write("גמיש לחלוטין: תמיכה בקלט מינימלי או מקסימלי מפורט לפי לבחירתך.")
 
 with col_duck:
     st.markdown("""
@@ -52,19 +52,31 @@ st.sidebar.header("⚙️ מצב חישוב ופרמטרים")
 
 calc_mode = st.sidebar.radio(
     "בחר מצב חישוב:",
-    ("חישוב הפוך (לפי V, I וזוויות מופע θv, θi)", "חישוב רגיל (לפי R ו-C/Xc)")
+    ("חישוב רגיל (מזערי/מלא לפי R ו-C/Xc)", "חישוב הפוך (לפי V, I וזוויות/הפרשים)")
 )
 
-f = st.sidebar.number_input("תדר f (הרץ):", min_value=0.1, value=50.0)
+st.sidebar.subheader("📌 נתוני מקור ותדר (אופציונלי)")
+V_rms = st.sidebar.number_input("מתח המקור V (וולט RMS):", min_value=0.1, value=50.0)
 
-if calc_mode == "חישוב רגיל (לפי R ו-C/Xc)":
-    V_rms = st.sidebar.number_input("מתח המקור V (וולט RMS):", min_value=0.1, value=50.0)
-    theta_v = st.sidebar.number_input("זווית מופע של מקור המתח θv (במעלות):", value=68.0)
-    R = st.sidebar.number_input("התנגדות הנגד R (אוהם):", min_value=0.1, value=21.865)
+# זווית מופע אופציונלית למקור
+use_theta_v = st.sidebar.checkbox("הוסף זווית מופע למקור המתח (θv)", value=True)
+theta_v = st.sidebar.number_input("זווית מופע θv (מעלות):", value=68.0) if use_theta_v else 0.0
+
+# תדר אופציונלי
+use_frequency = st.sidebar.checkbox("הוסף תדר f (נדרש לחישוב C ב-µF)", value=True)
+f = st.sidebar.number_input("תדר f (הרץ):", min_value=0.1, value=50.0) if use_frequency else None
+
+if calc_mode == "חישוב רגיל (מזערי/מלא לפי R ו-C/Xc)":
+    st.sidebar.subheader("🔌 רכיבי המעגל")
+    R = st.sidebar.number_input("התנגדות הנגד R (אוהם):", min_value=0.0, value=21.865)
     
-    c_option = st.sidebar.radio(
-        "איך תרצה להזין את הקבל?", ("קיבול C (במיקרו-פראד uF)", "היגוי קיבולי Xc (באוהם)")
-    )
+    if use_frequency:
+        c_option = st.sidebar.radio(
+            "איך תרצה להזין את הקבל?", ("קיבול C (במיקרו-פראד uF)", "היגוי קיבולי Xc (באוהם)")
+        )
+    else:
+        c_option = "היגוי קיבולי Xc (באוהם)"
+        st.sidebar.caption("ללא תדר, הזנת הקבל היא לפי היגוי קיבולי Xc בלבד.")
     
     if c_option == "קיבול C (במיקרו-פראד uF)":
         uF = st.sidebar.number_input("קיבול C (uF):", min_value=0.01, value=262.0)
@@ -72,34 +84,48 @@ if calc_mode == "חישוב רגיל (לפי R ו-C/Xc)":
         omega = 2 * math.pi * f
         Xc = 1 / (omega * C)
     else:
-        Xc = st.sidebar.number_input("היגוי קיבולי Xc (באוהם):", min_value=0.1, value=12.15)
-        omega = 2 * math.pi * f
-        C = 1 / (omega * Xc)
-        uF = C * 1e6
+        Xc = st.sidebar.number_input("היגוי קיבולי Xc (באוהם):", min_value=0.0, value=12.15)
+        if use_frequency and Xc > 0:
+            omega = 2 * math.pi * f
+            C = 1 / (omega * Xc)
+            uF = C * 1e6
+        else:
+            C, uF = None, None
 
+    # חישוב עכבה וזרם
     Z = math.sqrt(R**2 + Xc**2)
-    I_rms = V_rms / Z
-    phi_deg_circuit = math.degrees(math.atan(Xc / R))
+    I_rms = V_rms / Z if Z > 0 else 0
+    phi_deg_circuit = math.degrees(math.atan(Xc / R)) if R > 0 else 90.0
     theta_i = theta_v + phi_deg_circuit
 
 else:
     # --- מצב חישוב הפוך ---
-    V_rms = st.sidebar.number_input("מתח המקור V (וולט RMS):", min_value=0.1, value=50.0)
-    theta_v = st.sidebar.number_input("זווית מופע של המתח θv (במעלות):", value=68.0)
-    
+    st.sidebar.subheader("🔄 נתוני זרם וזוויות")
     I_rms = st.sidebar.number_input("זרם המעגל I (אמפר RMS):", min_value=0.01, value=2.0)
-    theta_i = st.sidebar.number_input("זווית מופע של הזרם θi (במעלות):", value=97.0)
     
-    phi_deg_circuit = theta_i - theta_v
+    angle_input_mode = st.sidebar.radio(
+        "איך תרצה להזין זוויות?",
+        ("זווית זרם ישירה (θi)", "הפרש מופע ישיר (φ = θi - θv)")
+    )
+    
+    if angle_input_mode == "זווית זרם ישירה (θi)":
+        theta_i = st.sidebar.number_input("זווית מופע של הזרם θi (במעלות):", value=97.0)
+        phi_deg_circuit = theta_i - theta_v
+    else:
+        phi_deg_circuit = st.sidebar.number_input("הפרש מופע φ (במעלות, זרם מקדים):", value=29.0)
+        theta_i = theta_v + phi_deg_circuit
+    
     phi_rad = math.radians(phi_deg_circuit)
-    
-    Z = V_rms / I_rms
+    Z = V_rms / I_rms if I_rms > 0 else 0
     R = Z * math.cos(phi_rad)
     Xc = Z * math.sin(phi_rad)
     
-    omega = 2 * math.pi * f
-    C = 1 / (omega * Xc) if Xc > 0 else 0
-    uF = C * 1e6
+    if use_frequency and Xc > 0:
+        omega = 2 * math.pi * f
+        C = 1 / (omega * Xc)
+        uF = C * 1e6
+    else:
+        C, uF = None, None
 
 # --- חישובי זוויות ומתחים וקטוריים ---
 theta_vr = theta_i
@@ -126,18 +152,23 @@ st.write("")
 col4, col5, col6 = st.columns(3)
 col4.metric("התנגדות הנגד (R)", f"{R:.3f} Ω")
 col5.metric("היגוי קיבולי (Xc)", f"{Xc:.2f} Ω")
-col6.metric("קיבול מחושב (C)", f"{uF:.2f} µF")
+if uF is not None:
+    col6.metric("קיבול מחושב (C)", f"{uF:.2f} µF")
+else:
+    col6.metric("קיבול מחושב (C)", "לא הוגדר תדר")
 
 st.markdown("---")
 
 # --- פירוט נתונים וזוויות מופע ---
 st.write("### 🔹 פירוט רכיבים, מתחים וזוויות מופע")
+c_text = f"{uF:.2f} µF" if uF is not None else "לא מחושב (אין תדר)"
 st.info(
     f"- **התנגדות הנגד ($R$):** {R:.3f} Ω\n"
     f"- **היגוי קיבולי ($X_C$):** {Xc:.2f} Ω\n"
+    f"- **קיבול ($C$):** {c_text}\n"
     f"- **מתח מקור וקטורי ($V$):** {V_rms:.2f} ∠ {theta_v:.2f}° V\n"
     f"- **זרם וקטורי במעגל ($I$):** {I_rms:.2f} ∠ {theta_i:.2f}° A\n"
-    f"- **הפרש מופע מחושב ($\phi = \\theta_I - \\theta_V$):** {phi_deg_circuit:.2f}°\n"
+    f"- **הפרש מופע ($\phi = \\theta_I - \\theta_V$):** {phi_deg_circuit:.2f}°\n"
     f"- **מתח וקטורי על הנגד ($V_R$):** {VR_rms:.2f} ∠ {theta_vr:.2f}° V\n"
     f"- **מתח וקטורי על הקבל ($V_C$):** {VC_rms:.2f} ∠ {theta_vc:.2f}° V"
 )
@@ -147,20 +178,18 @@ st.markdown("---")
 # --- חלק ויזואלי 1: גרפי סינוס בזמן ---
 st.subheader("🌊 גרפי סינוס של מתח וזרם בזמן t")
 
-# חישוב ערכי שיא (Peak) עבור הסינוס
 V_peak = V_rms * math.sqrt(2)
 I_peak = I_rms * math.sqrt(2)
 
-# יצירת ציר זמן ל-2 מחזורים
-T = 1 / f
+# תדר ברירת מחדל לציור אם לא הוזן תדר
+f_draw = f if use_frequency else 50.0
+T = 1 / f_draw
 t = np.linspace(0, 2 * T, 1000)
 
-# פונקציות גלי הסינוס
-omega = 2 * np.pi * f
-v_t = V_peak * np.sin(omega * t + math.radians(theta_v))
-i_t = I_peak * np.sin(omega * t + math.radians(theta_i))
+omega_draw = 2 * np.pi * f_draw
+v_t = V_peak * np.sin(omega_draw * t + math.radians(theta_v))
+i_t = I_peak * np.sin(omega_draw * t + math.radians(theta_i))
 
-# ציור הגרף
 fig_sine, ax_v = plt.subplots(figsize=(8, 4.5))
 
 color_v = '#2563eb'
@@ -172,18 +201,16 @@ line1 = ax_v.plot(t * 1000, v_t, color=color_v, linewidth=2, label=f'v(t) [Vm={V
 ax_v.tick_params(axis='y', labelcolor=color_v)
 ax_v.grid(True, linestyle='--', alpha=0.5)
 
-# ציר Y משני עבור הזרם
 ax_i = ax_v.twinx()
 ax_i.set_ylabel(f'זרם i(t) [A]', color=color_i, fontsize=11, fontweight='bold')
 line2 = ax_i.plot(t * 1000, i_t, color=color_i, linewidth=2, linestyle='--', label=f'i(t) [Im={I_peak:.1f}A, θi={theta_i:.1f}°]')
 ax_i.tick_params(axis='y', labelcolor=color_i)
 
-# מקרא מאוחד
 lines = line1 + line2
 labels = [l.get_label() for l in lines]
 ax_v.legend(lines, labels, loc='upper right', fontsize=10)
 
-plt.title(f"אותות סינוס בזמן (תדר f = {f:.0f}Hz, הפרש מופע φ = {phi_deg_circuit:.1f}°)", fontsize=13, fontweight='bold', pad=10)
+plt.title(f"אותות סינוס בזמן (הפרש מופע φ = {phi_deg_circuit:.1f}°)", fontsize=13, fontweight='bold', pad=10)
 plt.tight_layout()
 st.pyplot(fig_sine)
 
