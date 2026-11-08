@@ -81,12 +81,12 @@ if calc_mode == "חישוב רגיל (לפי R ו-C/Xc)":
     phi_deg_circuit = math.degrees(math.atan(Xc / R))
 
 else:
-    # --- מצב חישוב הפוך ---
+    # --- מצב חישוב הפוך (ללא חסימת זוויות) ---
     I = st.sidebar.number_input("זרם המעגל I (אמפר):", min_value=0.01, value=2.0)
+    
+    # הוסרה הגבלת המקסימום/מינימום כדי שאפשר יהיה להזין כל זווית
     phi_deg_circuit = st.sidebar.number_input(
-        "הפרש מופע φ בין מתח לזרם (במעלות, 0° עד 89.9°):", 
-        min_value=0.0, 
-        max_value=89.99, 
+        "הפרש מופע φ בין מתח לזרם (במעלות):", 
         value=26.57
     )
     
@@ -96,7 +96,7 @@ else:
     Xc = Z * math.sin(phi_rad)
     
     omega = 2 * math.pi * f
-    C = 1 / (omega * Xc) if Xc > 0 else 0
+    C = 1 / (omega * Xc) if Xc != 0 else 0
     uF = C * 1e6
 
 # --- חישובי זוויות ומתחים וקטוריים ---
@@ -138,7 +138,7 @@ st.info(
     f"- **זרם וקטורי במעגל ($I$):** {I:.2f} ∠ {theta_i:.2f}° A\n"
     f"- **מתח וקטורי על הנגד ($V_R$):** {VR:.2f} ∠ {theta_vr:.2f}° V\n"
     f"- **מתח וקטורי על הקבל ($V_C$):** {VC:.2f} ∠ {theta_vc:.2f}° V\n"
-    f"- **הפרש מופע ($\phi = \\theta_I - \\theta_V$):** {phi_deg_circuit:.2f}° (הזרם מקדים את המתח)"
+    f"- **הפרש מופע ($\phi = \\theta_I - \\theta_V$):** {phi_deg_circuit:.2f}°"
 )
 
 st.markdown("---")
@@ -150,8 +150,14 @@ def plot_triangle(x, y, x_label, y_label, hypotenuse_label, title, unit):
     ax.quiver(x, 0, 0, -y, angles='xy', scale_units='xy', scale=1, color='#dc2626', label=f'{y_label} = {y:.2f} {unit}')
     ax.quiver(0, 0, x, -y, angles='xy', scale_units='xy', scale=1, color='#16a34a', label=f'{hypotenuse_label} = {math.sqrt(x**2 + y**2):.2f} {unit}')
     
-    ax.set_xlim(-x*0.1, x*1.25)
-    ax.set_ylim(-y*1.25, y*0.2)
+    # התאמה דינמית של גבולות הגרף גם לערכים שליליים
+    x_min = min(0, x) * 1.25 if x < 0 else -abs(x)*0.1
+    x_max = max(0, x) * 1.25 if x > 0 else abs(x)*0.1
+    y_min = -abs(y)*1.25
+    y_max = abs(y)*0.2
+    
+    ax.set_xlim(x_min, x_max)
+    ax.set_ylim(y_min, y_max)
     ax.set_title(title, fontsize=14, fontweight='bold', pad=10)
     ax.grid(True, linestyle='--', alpha=0.6)
     ax.legend(loc='lower left', fontsize=11)
