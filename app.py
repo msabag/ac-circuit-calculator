@@ -17,23 +17,25 @@ if 'resistors' not in st.session_state:
 if 'capacitors' not in st.session_state:
     st.session_state.capacitors = [{"type": "C (קיבול)", "val": 262.0, "unit": "µF"}]
 
-# עיצוב מותאם אישית
+# עיצוב מותאם אישית לכרטיסיות נקיות וקומפקטיות
 st.markdown("""
     <style>
     div[data-testid="stMetric"] {
         background-color: #ffffff !important;
         border: 2px solid #cbd5e1 !important;
-        border-radius: 12px !important;
-        padding: 15px !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.08) !important;
+        border-radius: 10px !important;
+        padding: 10px 14px !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05) !important;
     }
     div[data-testid="stMetric"] label {
         color: #334155 !important;
         font-weight: bold !important;
+        font-size: 14px !important;
     }
     div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
         color: #0f172a !important;
         font-weight: bold !important;
+        font-size: 20px !important;
     }
     button[data-testid="baseButton-header"] {
         background-color: #0284c7 !important;
@@ -45,40 +47,23 @@ st.markdown("""
     .input-arrow-box {
         background: linear-gradient(135deg, #0284c7, #0369a1);
         color: white;
-        padding: 14px 20px;
-        border-radius: 12px;
+        padding: 12px 18px;
+        border-radius: 10px;
         font-weight: bold;
-        font-size: 16px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 10px rgba(2, 132, 199, 0.3);
+        font-size: 15px;
+        margin-bottom: 15px;
+        box-shadow: 0 4px 10px rgba(2, 132, 199, 0.25);
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
     }
     .animated-arrow {
-        font-size: 24px;
+        font-size: 20px;
         animation: pulse-arrow 1.2s infinite alternate;
     }
     @keyframes pulse-arrow {
         0% { transform: translateX(0px); }
         100% { transform: translateX(-8px); }
-    }
-    .component-details-box {
-        background-color: #f8fafc;
-        border-right: 6px solid #0284c7;
-        border-radius: 12px;
-        padding: 22px;
-        margin-top: 15px;
-        margin-bottom: 25px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    }
-    .component-item {
-        font-size: 17px;
-        line-height: 1.9;
-        color: #1e293b;
-    }
-    .component-item strong {
-        color: #0369a1;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -93,14 +78,14 @@ st.markdown("""
 col_title, col_duck = st.columns([4, 1])
 with col_title:
     st.title("⚡ מחשבון מעגל AC טורי מרובה רכיבים")
-    st.write("תמיכה מלאה בהזנת קיבול (C) או היגוי (Xc), בחירת יחידות (קילו, מילי, מיקרו, ננו, פיקו) והוספת רכיבים דינמית.")
+    st.write("ניתוח חשמלי מלא, הספק לכל רכיב וכרטיסיות קומפקטיות.")
 
 with col_duck:
     st.markdown("""
-    <div style="text-align: center; font-size: 50px; line-height: 1;">
+    <div style="text-align: center; font-size: 45px; line-height: 1;">
         🎩<br>🦆
     </div>
-    <div style="text-align: center; font-weight: bold; color: #38bdf8; font-size: 13px; margin-top: 5px;">
+    <div style="text-align: center; font-weight: bold; color: #38bdf8; font-size: 12px; margin-top: 3px;">
         רב-ברווז בסיעתא דשמיא
     </div>
     """, unsafe_allow_html=True)
@@ -136,7 +121,6 @@ if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
     st.sidebar.markdown("---")
     st.sidebar.subheader("🔌 נגדים במעגל (R)")
     
-    # ניהול נגדים
     for i in range(len(st.session_state.resistors)):
         col_r_val, col_r_unit = st.sidebar.columns([2, 1])
         r_val = col_r_val.number_input(f"נגד R{i+1}:", min_value=0.0, value=float(st.session_state.resistors[i]["val"]), key=f"r_val_{i}")
@@ -158,7 +142,6 @@ if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
     st.sidebar.markdown("---")
     st.sidebar.subheader("⚡ קבלים במעגל (C / Xc)")
     
-    # ניהול קבלים (עם בחירה בין C ל-Xc)
     for i in range(len(st.session_state.capacitors)):
         c_type = st.sidebar.radio(f"סוג קבל C{i+1}:", ["C (קיבול)", "Xc (היגוי)"], key=f"c_type_{i}")
         col_c_val, col_c_unit = st.sidebar.columns([2, 1])
@@ -238,75 +221,74 @@ P = I_rms**2 * R_total
 Q = I_rms**2 * Xc_total
 S = V_rms * I_rms
 
-# --- הצגת תוצאות ---
+# --- הצגת תוצאות כוללות ---
 st.subheader("📊 תוצאות החישוב הכוללות")
 
-col1, col2, col3 = st.columns(3)
-col1.metric("עכבה כוללת (Z)", f"{Z:.2f} Ω")
-col2.metric("זרם במעגל (I)", f"{I_rms:.2f} A")
-col3.metric("גורם הספק (cos φ)", f"{pf:.3f}")
+c1, c2, c3 = st.columns(3)
+c1.metric("עכבה כוללת (Z)", f"{Z:.2f} Ω")
+c2.metric("זרם במעגל (I)", f"{I_rms:.2f} A")
+c3.metric("גורם הספק (cos φ)", f"{pf:.3f}")
 
 st.write("")
 
-col4, col5, col6 = st.columns(3)
-col4.metric("התנגדות שקולה (R_total)", f"{R_total:.3f} Ω")
-col5.metric("היגוי קיבולי שקול (Xc_total)", f"{Xc_total:.2f} Ω")
+c4, c5, c6 = st.columns(3)
+c4.metric("התנגדות שקולה (R)", f"{R_total:.3f} Ω")
+c5.metric("היגוי קיבולי שקול (Xc)", f"{Xc_total:.2f} Ω")
 if uF_total is not None:
-    col6.metric("קיבול שקול (C_total)", f"{uF_total:.2f} µF")
+    c6.metric("קיבול שקול (C)", f"{uF_total:.2f} µF")
 else:
-    col6.metric("קיבול שקול (C_total)", "לא הוגדר תדר")
+    c6.metric("קיבול שקול (C)", "ללא תדר")
+
+st.write("")
+
+c7, c8, c9 = st.columns(3)
+c7.metric("הספק אקטיבי כולל (P)", f"{P:.2f} W")
+c8.metric("הספק ריאקטיבי כולל (Q)", f"{Q:.2f} VAR")
+c9.metric("הספק מדומה כולל (S)", f"{S:.2f} VA")
 
 st.markdown("---")
 
-# --- פירוט רכיבים מורחב, מוגדל ומאיר עיניים ---
-st.subheader("🔹 פירוט מורחב של רכיבי המעגל והמתחים")
+# --- פירוט רכיבים בכרטיסיות (Metrics) קומפקטיות ---
+st.subheader("🔹 פירוט רכיבים, מתחים והספקים")
 
-resistors_html = ""
-if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
+# 1. פירוט נגדים (אם קיימים)
+if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)" and r_details_list:
+    st.write("#### 🔴 נגדים במעגל")
     for idx, val, unit, ohms in r_details_list:
         v_r_i = I_rms * ohms
-        resistors_html += f"<br>&nbsp;&nbsp;&nbsp;&nbsp;• <strong>נגד R{idx}:</strong> {val} {unit} ({ohms:.2f} Ω) — מפל מתח: <strong>{v_r_i:.2f} V</strong>"
+        p_r_i = (I_rms ** 2) * ohms
+        rc1, rc2, rc3, rc4 = st.columns(4)
+        rc1.metric(f"נגד R{idx}", f"{val} {unit}")
+        rc2.metric(f"התנגדות (Ω)", f"{ohms:.2f} Ω")
+        rc3.metric(f"מפל מתח (VR{idx})", f"{v_r_i:.2f} V")
+        rc4.metric(f"הספק (P{idx})", f"{p_r_i:.2f} W")
+        st.write("")
 
-capacitors_html = ""
-if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
+# 2. פירוט קבלים (אם קיימים)
+if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)" and c_details_list:
+    st.write("#### 🔵 קבלים במעגל")
     for idx, ctype, val, unit, xc_val, c_uf in c_details_list:
         v_c_i = I_rms * xc_val
-        uf_str = f" | קיבול: {c_uf:.2f} µF" if c_uf is not None else ""
-        capacitors_html += f"<br>&nbsp;&nbsp;&nbsp;&nbsp;• <strong>קבל C{idx} ({ctype}):</strong> {val} {unit} (Xc = {xc_val:.2f} Ω{uf_str}) — מפל מתח: <strong>{v_c_i:.2f} V</strong>"
+        q_c_i = (I_rms ** 2) * xc_val
+        c_str = f"{c_uf:.2f} µF" if c_uf is not None else "ללא תדר"
+        cc1, cc2, cc3, cc4 = st.columns(4)
+        cc1.metric(f"קבל C{idx}", f"{val} {unit}")
+        cc2.metric(f"היגוי (Xc{idx})", f"{xc_val:.2f} Ω")
+        cc3.metric(f"מפל מתח (VC{idx})", f"{v_c_i:.2f} V")
+        cc4.metric(f"הספק ריאקטיבי (Q{idx})", f"{q_c_i:.2f} VAR")
+        st.write("")
 
-c_total_str = f"{uF_total:.2f} µF" if uF_total is not None else "לא מחושב (אין תדר)"
+# 3. פירוט זוויות ווקטורים כרטיסיות
+st.write("#### 📐 זוויות ופאזורים במעגל")
+ac1, ac2, ac3 = st.columns(3)
+ac1.metric("מתח מקור וקטורי (V)", f"{V_rms:.2f} ∠ {theta_v:.1f}° V")
+ac2.metric("זרם וקטורי (I)", f"{I_rms:.2f} ∠ {theta_i:.1f}° A")
+ac3.metric("הפרש מופע (φ)", f"{phi_deg_circuit:.2f}°")
 
-st.markdown(f"""
-<div class="component-details-box">
-    <div class="component-item">
-        📌 <strong>התנגדות כוללת בטור ($R_{{total}}$):</strong> {R_total:.3f} Ω {resistors_html}
-    </div>
-    <hr style="margin: 12px 0; border: 0; border-top: 1px solid #e2e8f0;">
-    <div class="component-item">
-        ⚡ <strong>היגוי קיבולי כולל בטור ($X_{{C,total}}$):</strong> {Xc_total:.2f} Ω {capacitors_html}
-    </div>
-    <hr style="margin: 12px 0; border: 0; border-top: 1px solid #e2e8f0;">
-    <div class="component-item">
-        🔋 <strong>קיבול שקול מחושב ($C_{{total}}$):</strong> {c_total_str}
-    </div>
-    <hr style="margin: 12px 0; border: 0; border-top: 1px solid #e2e8f0;">
-    <div class="component-item">
-        📐 <strong>מתח מקור וקטורי ($V$):</strong> {V_rms:.2f} ∠ {theta_v:.2f}° V
-    </div>
-    <div class="component-item">
-        🌊 <strong>זרם וקטורי במעגל ($I$):</strong> {I_rms:.2f} ∠ {theta_i:.2f}° A
-    </div>
-    <div class="component-item">
-        🔄 <strong>הפרש מופע כולל ($\phi = \\theta_I - \\theta_V$):</strong> {phi_deg_circuit:.2f}° (הזרם מקדים את המתח)
-    </div>
-    <div class="component-item">
-        🔴 <strong>מתח שקול על הנגדים ($V_{{R,total}}$):</strong> {VR_total:.2f} ∠ {theta_vr:.2f}° V
-    </div>
-    <div class="component-item">
-        🔵 <strong>מתח שקול על הקבלים ($V_{{C,total}}$):</strong> {VC_total:.2f} ∠ {theta_vc:.2f}° V
-    </div>
-</div>
-""", unsafe_allow_html=True)
+ac4, ac5, ac6 = st.columns(3)
+ac4.metric("מתח שקול נגדים (VR)", f"{VR_total:.2f} ∠ {theta_vr:.1f}° V")
+ac5.metric("מתח שקול קבלים (VC)", f"{VC_total:.2f} ∠ {theta_vc:.1f}° V")
+ac6.metric("מקדם הספק", f"{pf:.3f}")
 
 st.markdown("---")
 
@@ -324,7 +306,7 @@ omega_draw = 2 * np.pi * f_draw
 v_t = V_peak * np.sin(omega_draw * t + math.radians(theta_v))
 i_t = I_peak * np.sin(omega_draw * t + math.radians(theta_i))
 
-fig_sine, ax_v = plt.subplots(figsize=(8, 4.5))
+fig_sine, ax_v = plt.subplots(figsize=(8, 4.2))
 
 color_v = '#2563eb'
 color_i = '#dc2626'
@@ -354,7 +336,7 @@ st.markdown("---")
 st.subheader("📐 ייצוג ויזואלי של המשולשים השקולים")
 
 def plot_triangle(x, y, x_label, y_label, hypotenuse_label, title, unit):
-    fig, ax = plt.subplots(figsize=(7, 5))
+    fig, ax = plt.subplots(figsize=(7, 4.5))
     ax.quiver(0, 0, x, 0, angles='xy', scale_units='xy', scale=1, color='#2563eb', label=f'{x_label} = {x:.2f} {unit}')
     ax.quiver(x, 0, 0, -y, angles='xy', scale_units='xy', scale=1, color='#dc2626', label=f'{y_label} = {y:.2f} {unit}')
     ax.quiver(0, 0, x, -y, angles='xy', scale_units='xy', scale=1, color='#16a34a', label=f'{hypotenuse_label} = {math.sqrt(x**2 + y**2):.2f} {unit}')
@@ -366,9 +348,9 @@ def plot_triangle(x, y, x_label, y_label, hypotenuse_label, title, unit):
     
     ax.set_xlim(x_min, x_max)
     ax.set_ylim(y_min, y_max)
-    ax.set_title(title, fontsize=14, fontweight='bold', pad=10)
+    ax.set_title(title, fontsize=13, fontweight='bold', pad=10)
     ax.grid(True, linestyle='--', alpha=0.6)
-    ax.legend(loc='lower left', fontsize=11)
+    ax.legend(loc='lower left', fontsize=10)
     plt.tight_layout()
     return fig
 
