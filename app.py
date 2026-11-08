@@ -10,9 +10,10 @@ st.set_page_config(
     layout="wide"
 )
 
-# תיקון צבעים וגופנים לכרטיסיות התוצאות
+# עיצוב מותאם אישית: כרטיסיות, חץ מונפש והבלטת כפתור הסיידבר
 st.markdown("""
     <style>
+    /* עיצוב כרטיסיות התוצאות */
     div[data-testid="stMetric"] {
         background-color: #ffffff !important;
         border: 2px solid #cbd5e1 !important;
@@ -28,14 +29,56 @@ st.markdown("""
         color: #0f172a !important;
         font-weight: bold !important;
     }
+    
+    /* הבלטת כפתור פתיחת ה-Sidebar של Streamlit בפינה */
+    button[data-testid="baseButton-header"] {
+        background-color: #0284c7 !important;
+        color: white !important;
+        border-radius: 8px !important;
+        padding: 8px 12px !important;
+        font-size: 20px !important;
+    }
+
+    /* תיבת הנחיה בולטת עם חץ זז */
+    .input-arrow-box {
+        background: linear-gradient(135deg, #0284c7, #0369a1);
+        color: white;
+        padding: 14px 20px;
+        border-radius: 12px;
+        font-weight: bold;
+        font-size: 16px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 10px rgba(2, 132, 199, 0.3);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .animated-arrow {
+        font-size: 24px;
+        animation: pulse-arrow 1.2s infinite alternate;
+    }
+
+    @keyframes pulse-arrow {
+        0% { transform: translateX(0px); }
+        100% { transform: translateX(-8px); }
+    }
     </style>
+""", unsafe_allow_html=True)
+
+# תיבת הנחיה בולטת בראש העמוד
+st.markdown("""
+    <div class="input-arrow-box">
+        <span class="animated-arrow">👈</span>
+        <span>לחץ על החץ בפינה / פתח את סרגל הצד כדי להזין ולשנות נתונים</span>
+    </div>
 """, unsafe_allow_html=True)
 
 # כותרת ראשית עם ברווז אמבטיה בשטריימל
 col_title, col_duck = st.columns([4, 1])
 with col_title:
     st.title("⚡ מחשבון מעגל AC טורי (R-C)")
-    st.write("גמיש לחלוטין: תמיכה בקלט מינימלי או מקסימלי מפורט לפי לבחירתך.")
+    st.write("גמיש לחלוטין: תמיכה בקלט מינימלי או מקסימלי מפורט לבחירתך.")
 
 with col_duck:
     st.markdown("""
@@ -181,7 +224,6 @@ st.subheader("🌊 גרפי סינוס של מתח וזרם בזמן t")
 V_peak = V_rms * math.sqrt(2)
 I_peak = I_rms * math.sqrt(2)
 
-# תדר ברירת מחדל לציור אם לא הוזן תדר
 f_draw = f if use_frequency else 50.0
 T = 1 / f_draw
 t = np.linspace(0, 2 * T, 1000)
