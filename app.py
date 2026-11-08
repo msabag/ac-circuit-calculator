@@ -34,7 +34,7 @@ st.markdown("""
 col_title, col_duck = st.columns([4, 1])
 with col_title:
     st.title("⚡ מחשבון מעגל AC טורי (R-C)")
-    st.write("ניתוח חשמלי מלא, חישוב ישיר והפוך, וייצוג ויזואלי ברור.")
+    st.write("ניתוח חשמלי מלא, כולל זוויות מופע של המתח והזרם, וייצוג ויזואלי ברור.")
 
 with col_duck:
     st.markdown("""
@@ -54,10 +54,11 @@ calc_mode = st.sidebar.radio(
     ("חישוב רגיל (לפי R ו-C/Xc)", "חישוב הפוך (לפי V, I וזווית מופע φ)")
 )
 
+V = st.sidebar.number_input("מתח המקור V (וולט):", min_value=0.1, value=12.0)
+theta_v = st.sidebar.number_input("זווית מופע של מקור המתח θv (במעלות):", value=0.0)
 f = st.sidebar.number_input("תדר f (הרץ):", min_value=0.1, value=50.0)
 
 if calc_mode == "חישוב רגיל (לפי R ו-C/Xc)":
-    V = st.sidebar.number_input("מתח המקור V (וולט):", min_value=0.1, value=12.0)
     R = st.sidebar.number_input("התנגדות הנגד R (אוהם):", min_value=0.1, value=8.0)
     
     c_option = st.sidebar.radio(
@@ -70,25 +71,21 @@ if calc_mode == "חישוב רגיל (לפי R ו-C/Xc)":
         omega = 2 * math.pi * f
         Xc = 1 / (omega * C)
     else:
-        Xc = st.sidebar.number_input("היגוי קיבולי Xc (אוהם):", min_value=0.1, value=4.0)
+        Xc = st.sidebar.number_input("היגוי קיבולי Xc (באוהם):", min_value=0.1, value=4.0)
         omega = 2 * math.pi * f
         C = 1 / (omega * Xc)
         uF = C * 1e6
 
-    # חישובים תלויי קלט רגיל
     Z = math.sqrt(R**2 + Xc**2)
     I = V / Z
-    phi_deg = -math.degrees(math.atan(Xc / R))
+    phi_deg_circuit = math.degrees(math.atan(Xc / R))  # זווית עכבה אבסולוטית
 
 else:
     # --- מצב חישוב הפוך ---
-    V = st.sidebar.number_input("מתח המקור V (וולט):", min_value=0.1, value=12.0)
     I = st.sidebar.number_input("זרם המעגל I (אמפר):", min_value=0.01, value=1.34)
-    phi_deg_input = st.sidebar.number_input("זווית מופע φ (במעלות, זרם מקדים):", min_value=0.0, max_value=89.9, value=26.57)
+    phi_deg_circuit = st.sidebar.number_input("הפרש מופע φ בין מתח לזרם (במעלות, זרם מקדים):", min_value=0.0, max_value=89.9, value=26.57)
     
-    phi_deg = -phi_deg_input  # מעגל קיבולי: זווית עכבה שלילית
-    phi_rad = math.radians(phi_deg_input)
-    
+    phi_rad = math.radians(phi_deg_circuit)
     Z = V / I
     R = Z * math.cos(phi_rad)
     Xc = Z * math.sin(phi_rad)
@@ -97,10 +94,15 @@ else:
     C = 1 / (omega * Xc) if Xc > 0 else 0
     uF = C * 1e6
 
-# --- חישוב רכיבים משותף ---
+# --- חישובי זוויות ומתחים וקטוריים ---
+# במעגל קיבולי, הזרם מקדים את המתח ב-phi_deg_circuit
+theta_i = theta_v + phi_deg_circuit
+theta_vr = theta_i
+theta_vc = theta_i - 90.0
+
 VR = I * R
 VC = I * Xc
-pf = math.cos(math.radians(phi_deg))
+pf = math.cos(math.radians(phi_deg_circuit))
 
 P = I**2 * R
 Q = I**2 * Xc
@@ -123,15 +125,15 @@ col6.metric("קיבול מחושב (C)", f"{uF:.2f} µF")
 
 st.markdown("---")
 
-# --- פירוט נתונים ---
-st.write("### 🔹 פירוט רכיבים, מתחים וזווית")
+# --- פירוט נתונים וזוויות מופע ---
+st.write("### 🔹 פירוט רכיבים, מתחים וזוויות מופע")
 st.info(
-    f"- **התנגדות הנגד ($R$):** {R:.2f} Ω\n"
-    f"- **היגוי קיבולי ($X_C$):** {Xc:.2f} Ω\n"
-    f"- **קיבול הקבל ($C$):** {uF:.2f} µF (בתדר f = {f:.1f} Hz)\n"
-    f"- **מתח על הנגד ($V_R$):** {VR:.2f} V\n"
-    f"- **מתח על הקבל ($V_C$):** {VC:.2f} V\n"
-    f"- **זווית מופע ($\phi$):** {phi_deg:.2f}°"
+    f"- **מתח מקור וקטורי ($V$):** {V:.2f} ∠ {theta_v:.2f}° V\n"
+    f"- **זרם וקטורי במעגל ($I$):** {I:.2f} ∠ {theta_i:.2f}° A\n"
+    f"- **מתח וקטורי על הנגד ($V_R$):** {VR:.2f} ∠ {theta_vr:.2f}° V\n"
+    f"- **מתח וקטורי על הקבל ($V_C$):** {VC:.2f} ∠ {theta_vc:.2f}° V\n"
+    f"- **הפרש מופע ($\phi = \\theta_I - \\theta_V$):** {phi_deg_circuit:.2f}° (הזרם מקדים את המתח)\n"
+    f"- **התנגדות ($R$):** {R:.2f} Ω  |  **היגוי קיבולי ($X_C$):** {Xc:.2f} Ω"
 )
 
 st.markdown("---")
