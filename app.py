@@ -54,8 +54,8 @@ calc_mode = st.sidebar.radio(
     ("חישוב רגיל (לפי R ו-C/Xc)", "חישוב הפוך (לפי V, I וזווית מופע φ)")
 )
 
-V = st.sidebar.number_input("מתח המקור V (וולט):", min_value=0.1, value=12.0)
-theta_v = st.sidebar.number_input("זווית מופע של מקור המתח θv (במעלות):", value=0.0)
+V = st.sidebar.number_input("מתח המקור V (וולט):", min_value=0.1, value=50.0)
+theta_v = st.sidebar.number_input("זווית מופע של מקור המתח θv (במעלות):", value=68.0)
 f = st.sidebar.number_input("תדר f (הרץ):", min_value=0.1, value=50.0)
 
 if calc_mode == "חישוב רגיל (לפי R ו-C/Xc)":
@@ -78,12 +78,17 @@ if calc_mode == "חישוב רגיל (לפי R ו-C/Xc)":
 
     Z = math.sqrt(R**2 + Xc**2)
     I = V / Z
-    phi_deg_circuit = math.degrees(math.atan(Xc / R))  # זווית עכבה אבסולוטית
+    phi_deg_circuit = math.degrees(math.atan(Xc / R))
 
 else:
     # --- מצב חישוב הפוך ---
-    I = st.sidebar.number_input("זרם המעגל I (אמפר):", min_value=0.01, value=1.34)
-    phi_deg_circuit = st.sidebar.number_input("הפרש מופע φ בין מתח לזרם (במעלות, זרם מקדים):", min_value=0.0, max_value=89.9, value=26.57)
+    I = st.sidebar.number_input("זרם המעגל I (אמפר):", min_value=0.01, value=2.0)
+    phi_deg_circuit = st.sidebar.number_input(
+        "הפרש מופע φ בין מתח לזרם (במעלות, 0° עד 89.9°):", 
+        min_value=0.0, 
+        max_value=89.99, 
+        value=26.57
+    )
     
     phi_rad = math.radians(phi_deg_circuit)
     Z = V / I
@@ -95,7 +100,6 @@ else:
     uF = C * 1e6
 
 # --- חישובי זוויות ומתחים וקטוריים ---
-# במעגל קיבולי, הזרם מקדים את המתח ב-phi_deg_circuit
 theta_i = theta_v + phi_deg_circuit
 theta_vr = theta_i
 theta_vc = theta_i - 90.0
@@ -119,8 +123,8 @@ col3.metric("גורם הספק (cos φ)", f"{pf:.3f}")
 st.write("")
 
 col4, col5, col6 = st.columns(3)
-col4.metric("מתח נגד (VR)", f"{VR:.2f} V")
-col5.metric("מתח קבל (VC)", f"{VC:.2f} V")
+col4.metric("התנגדות הנגד (R)", f"{R:.2f} Ω")
+col5.metric("היגוי קיבולי (Xc)", f"{Xc:.2f} Ω")
 col6.metric("קיבול מחושב (C)", f"{uF:.2f} µF")
 
 st.markdown("---")
@@ -128,18 +132,18 @@ st.markdown("---")
 # --- פירוט נתונים וזוויות מופע ---
 st.write("### 🔹 פירוט רכיבים, מתחים וזוויות מופע")
 st.info(
+    f"- **התנגדות הנגד ($R$):** {R:.2f} Ω\n"
+    f"- **היגוי קיבולי ($X_C$):** {Xc:.2f} Ω\n"
     f"- **מתח מקור וקטורי ($V$):** {V:.2f} ∠ {theta_v:.2f}° V\n"
     f"- **זרם וקטורי במעגל ($I$):** {I:.2f} ∠ {theta_i:.2f}° A\n"
     f"- **מתח וקטורי על הנגד ($V_R$):** {VR:.2f} ∠ {theta_vr:.2f}° V\n"
     f"- **מתח וקטורי על הקבל ($V_C$):** {VC:.2f} ∠ {theta_vc:.2f}° V\n"
-    f"- **הפרש מופע ($\phi = \\theta_I - \\theta_V$):** {phi_deg_circuit:.2f}° (הזרם מקדים את המתח)\n"
-    f"- **התנגדות ($R$):** {R:.2f} Ω  |  **היגוי קיבולי ($X_C$):** {Xc:.2f} Ω"
+    f"- **הפרש מופע ($\phi = \\theta_I - \\theta_V$):** {phi_deg_circuit:.2f}° (הזרם מקדים את המתח)"
 )
 
 st.markdown("---")
 st.subheader("📐 ייצוג ויזואלי של המשולשים")
 
-# פונקציית עזר לציור גרף בודד וגדול
 def plot_triangle(x, y, x_label, y_label, hypotenuse_label, title, unit):
     fig, ax = plt.subplots(figsize=(7, 5))
     ax.quiver(0, 0, x, 0, angles='xy', scale_units='xy', scale=1, color='#2563eb', label=f'{x_label} = {x:.2f} {unit}')
@@ -154,7 +158,6 @@ def plot_triangle(x, y, x_label, y_label, hypotenuse_label, title, unit):
     plt.tight_layout()
     return fig
 
-# הצגת המשולשים
 st.write("#### 1. משולש עכבות")
 st.pyplot(plot_triangle(R, Xc, "R", "Xc", "Z", "משולש עכבות (Impedance Triangle)", "Ω"))
 
