@@ -12,15 +12,14 @@ st.set_page_config(
 
 # אתחול רשימות רכיבים דינמיות ב-Session State
 if 'resistors' not in st.session_state:
-    st.session_state.resistors = [21.865]  # נגד ראשון כברירת מחדל
+    st.session_state.resistors = [{"val": 21.865, "unit": "Ω"}]
 
 if 'capacitors' not in st.session_state:
-    st.session_state.capacitors = [12.15]  # היגוי קיבולי ראשון (Xc)
+    st.session_state.capacitors = [{"type": "C (קיבול)", "val": 262.0, "unit": "µF"}]
 
-# עיצוב מותאם אישית: כרטיסיות, הבלטת פירוט הרכיבים וחץ מונפש
+# עיצוב מותאם אישית
 st.markdown("""
     <style>
-    /* עיצוב כרטיסיות התוצאות */
     div[data-testid="stMetric"] {
         background-color: #ffffff !important;
         border: 2px solid #cbd5e1 !important;
@@ -36,8 +35,6 @@ st.markdown("""
         color: #0f172a !important;
         font-weight: bold !important;
     }
-    
-    /* הבלטת כפתור פתיחת ה-Sidebar */
     button[data-testid="baseButton-header"] {
         background-color: #0284c7 !important;
         color: white !important;
@@ -45,8 +42,6 @@ st.markdown("""
         padding: 8px 12px !important;
         font-size: 20px !important;
     }
-
-    /* תיבת הנחיה בולטת */
     .input-arrow-box {
         background: linear-gradient(135deg, #0284c7, #0369a1);
         color: white;
@@ -60,18 +55,14 @@ st.markdown("""
         align-items: center;
         gap: 12px;
     }
-    
     .animated-arrow {
         font-size: 24px;
         animation: pulse-arrow 1.2s infinite alternate;
     }
-
     @keyframes pulse-arrow {
         0% { transform: translateX(0px); }
         100% { transform: translateX(-8px); }
     }
-
-    /* עיצוב מוגדל ומאיר עיניים לבלוק פירוט הרכיבים */
     .component-details-box {
         background-color: #f8fafc;
         border-right: 6px solid #0284c7;
@@ -92,19 +83,17 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# תיבת הנחיה בולטת בראש העמוד
 st.markdown("""
     <div class="input-arrow-box">
         <span class="animated-arrow">👈</span>
-        <span>לחץ על החץ בפינה / פתח את סרגל הצד כדי להוסיף רכיבים ולשנות נתונים</span>
+        <span>לחץ על החץ בפינה / פתח את סרגל הצד כדי להוסיף רכיבים ולבחור יחידות (k, m, µ, n, p)</span>
     </div>
 """, unsafe_allow_html=True)
 
-# כותרת ראשית עם ברווז אמבטיה בשטריימל
 col_title, col_duck = st.columns([4, 1])
 with col_title:
     st.title("⚡ מחשבון מעגל AC טורי מרובה רכיבים")
-    st.write("תוכל להוסיף כמה נגדים וקבלים שתרצה בלחיצה על כפתור +, ולקבל ניתוח מלא.")
+    st.write("תמיכה מלאה בהזנת קיבול (C) או היגוי (Xc), בחירת יחידות (קילו, מילי, מיקרו, ננו, פיקו) והוספת רכיבים דינמית.")
 
 with col_duck:
     st.markdown("""
@@ -124,60 +113,86 @@ calc_mode = st.sidebar.radio(
     ("חישוב רגיל (לפי רכיבים דינמיים)", "חישוב הפוך (לפי V, I וזוויות)")
 )
 
-st.sidebar.subheader("📌 נתוני מקור ותדר (אופציונלי)")
+st.sidebar.subheader("📌 נתוני מקור ותדר")
 V_rms = st.sidebar.number_input("מתח המקור V (וולט RMS):", min_value=0.1, value=50.0)
 
 use_theta_v = st.sidebar.checkbox("הוסף זווית מופע למקור המתח (θv)", value=True)
 theta_v = st.sidebar.number_input("זווית מופע θv (מעלות):", value=68.0) if use_theta_v else 0.0
 
-use_frequency = st.sidebar.checkbox("הוסף תדר f (נדרש לחישוב C ב-µF)", value=True)
+use_frequency = st.sidebar.checkbox("הוסף תדר f (נדרש להמרת C ל-Xc)", value=True)
 f = st.sidebar.number_input("תדר f (הרץ):", min_value=0.1, value=50.0) if use_frequency else None
+
+# מקדמי המרה ליחידות
+R_MULTIPLIERS = {"Ω": 1.0, "kΩ": 1e3, "MΩ": 1e6, "mΩ": 1e-3}
+C_MULTIPLIERS = {"F": 1.0, "mF": 1e-3, "µF": 1e-6, "nF": 1e-9, "pF": 1e-12}
+XC_MULTIPLIERS = {"Ω": 1.0, "kΩ": 1e3, "mΩ": 1e-3}
+
+R_total = 0.0
+Xc_total = 0.0
+r_details_list = []
+c_details_list = []
 
 if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
     st.sidebar.markdown("---")
     st.sidebar.subheader("🔌 נגדים במעגל (R)")
     
-    # ניהול נגדים דינמיים
+    # ניהול נגדים
     for i in range(len(st.session_state.resistors)):
-        st.session_state.resistors[i] = st.sidebar.number_input(
-            f"נגד R{i+1} (אוהם):", 
-            min_value=0.0, 
-            value=float(st.session_state.resistors[i]),
-            key=f"res_{i}"
-        )
-    
+        col_r_val, col_r_unit = st.sidebar.columns([2, 1])
+        r_val = col_r_val.number_input(f"נגד R{i+1}:", min_value=0.0, value=float(st.session_state.resistors[i]["val"]), key=f"r_val_{i}")
+        r_unit = col_r_unit.selectbox("יחידה:", ["Ω", "kΩ", "MΩ", "mΩ"], index=["Ω", "kΩ", "MΩ", "mΩ"].index(st.session_state.resistors[i]["unit"]), key=f"r_unit_{i}")
+        
+        st.session_state.resistors[i] = {"val": r_val, "unit": r_unit}
+        r_ohms = r_val * R_MULTIPLIERS[r_unit]
+        R_total += r_ohms
+        r_details_list.append((i+1, r_val, r_unit, r_ohms))
+        
     col_r_add, col_r_rem = st.sidebar.columns(2)
-    if col_r_add.button("➕ הוסף נגד (R)", key="add_r"):
-        st.session_state.resistors.append(10.0)
+    if col_r_add.button("➕ הוסף נגד", key="add_r"):
+        st.session_state.resistors.append({"val": 10.0, "unit": "Ω"})
         st.rerun()
     if col_r_rem.button("➖ הסר נגד", key="rem_r") and len(st.session_state.resistors) > 1:
         st.session_state.resistors.pop()
         st.rerun()
 
     st.sidebar.markdown("---")
-    st.sidebar.subheader("⚡ קבלים במעגל (Xc / C)")
+    st.sidebar.subheader("⚡ קבלים במעגל (C / Xc)")
     
-    # ניהול קבלים דינמיים
+    # ניהול קבלים (עם בחירה בין C ל-Xc)
     for i in range(len(st.session_state.capacitors)):
-        st.session_state.capacitors[i] = st.sidebar.number_input(
-            f"היגוי קיבולי Xc{i+1} (אוהם):", 
-            min_value=0.0, 
-            value=float(st.session_state.capacitors[i]),
-            key=f"cap_{i}"
-        )
+        c_type = st.sidebar.radio(f"סוג קבל C{i+1}:", ["C (קיבול)", "Xc (היגוי)"], key=f"c_type_{i}")
+        col_c_val, col_c_unit = st.sidebar.columns([2, 1])
         
+        if c_type == "C (קיבול)":
+            c_val = col_c_val.number_input(f"ערך C{i+1}:", min_value=0.01, value=float(st.session_state.capacitors[i]["val"]), key=f"c_val_{i}")
+            c_unit = col_c_unit.selectbox("יחידה:", ["µF", "nF", "pF", "mF", "F"], key=f"c_unit_{i}")
+            
+            c_farads = c_val * C_MULTIPLIERS[c_unit]
+            if use_frequency and f:
+                xc_ohms = 1 / (2 * math.pi * f * c_farads)
+            else:
+                xc_ohms = 0.0
+                st.sidebar.warning("נדרש תדר f כדי לחשב היגוי Xc מתוך קיבול C")
+            c_details_list.append((i+1, "C", c_val, c_unit, xc_ohms, c_farads * 1e6))
+        else:
+            c_val = col_c_val.number_input(f"ערך Xc{i+1}:", min_value=0.0, value=float(st.session_state.capacitors[i]["val"]), key=f"c_val_{i}")
+            c_unit = col_c_unit.selectbox("יחידה:", ["Ω", "kΩ", "mΩ"], key=f"c_unit_{i}")
+            
+            xc_ohms = c_val * XC_MULTIPLIERS[c_unit]
+            c_uf_calc = (1 / (2 * math.pi * f * xc_ohms) * 1e6) if (use_frequency and f and xc_ohms > 0) else None
+            c_details_list.append((i+1, "Xc", c_val, c_unit, xc_ohms, c_uf_calc))
+            
+        st.session_state.capacitors[i] = {"type": c_type, "val": c_val, "unit": c_unit}
+        Xc_total += xc_ohms
+
     col_c_add, col_c_rem = st.sidebar.columns(2)
-    if col_c_add.button("➕ הוסף קבל (Xc)", key="add_c"):
-        st.session_state.capacitors.append(10.0)
+    if col_c_add.button("➕ הוסף קבל", key="add_c"):
+        st.session_state.capacitors.append({"type": "C (קיבול)", "val": 10.0, "unit": "µF"})
         st.rerun()
     if col_c_rem.button("➖ הסר קבל", key="rem_c") and len(st.session_state.capacitors) > 1:
         st.session_state.capacitors.pop()
         st.rerun()
 
-    # חישוב שקולים בטור
-    R_total = sum(st.session_state.resistors)
-    Xc_total = sum(st.session_state.capacitors)
-    
     Z = math.sqrt(R_total**2 + Xc_total**2)
     I_rms = V_rms / Z if Z > 0 else 0
     phi_deg_circuit = math.degrees(math.atan(Xc_total / R_total)) if R_total > 0 else 90.0
@@ -205,15 +220,14 @@ else:
     R_total = Z * math.cos(phi_rad)
     Xc_total = Z * math.sin(phi_rad)
 
-# --- חישוב C שקול ב-µF אם הוזן תדר ---
-if use_frequency and Xc_total > 0:
-    omega = 2 * math.pi * f
-    C_total = 1 / (omega * Xc_total)
+# חישוב C שקול
+if use_frequency and f and Xc_total > 0:
+    C_total = 1 / (2 * math.pi * f * Xc_total)
     uF_total = C_total * 1e6
 else:
     uF_total = None
 
-# --- חישובי זוויות ומתחים וקטוריים ---
+# חישוב מתחים והספקים
 VR_total = I_rms * R_total
 VC_total = I_rms * Xc_total
 theta_vr = theta_i
@@ -247,30 +261,29 @@ st.markdown("---")
 # --- פירוט רכיבים מורחב, מוגדל ומאיר עיניים ---
 st.subheader("🔹 פירוט מורחב של רכיבי המעגל והמתחים")
 
-resistors_detail = ""
+resistors_html = ""
 if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
-    for idx, r_val in enumerate(st.session_state.resistors):
-        v_r_i = I_rms * r_val
-        resistors_detail += f"<br>&nbsp;&nbsp;&nbsp;&nbsp;• <strong>נגד R{idx+1}:</strong> {r_val:.2f} Ω (מפלי מתח: {v_r_i:.2f} V)"
+    for idx, val, unit, ohms in r_details_list:
+        v_r_i = I_rms * ohms
+        resistors_html += f"<br>&nbsp;&nbsp;&nbsp;&nbsp;• <strong>נגד R{idx}:</strong> {val} {unit} ({ohms:.2f} Ω) — מפל מתח: <strong>{v_r_i:.2f} V</strong>"
 
-capacitors_detail = ""
+capacitors_html = ""
 if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
-    for idx, xc_val in enumerate(st.session_state.capacitors):
+    for idx, ctype, val, unit, xc_val, c_uf in c_details_list:
         v_c_i = I_rms * xc_val
-        c_i_uf = (1 / (2 * math.pi * f * xc_val) * 1e6) if (use_frequency and xc_val > 0) else None
-        c_i_str = f" | קיבול: {c_i_uf:.2f} µF" if c_i_uf else ""
-        capacitors_detail += f"<br>&nbsp;&nbsp;&nbsp;&nbsp;• <strong>קבל C{idx+1}:</strong> Xc = {xc_val:.2f} Ω {c_i_str} (מפלי מתח: {v_c_i:.2f} V)"
+        uf_str = f" | קיבול: {c_uf:.2f} µF" if c_uf is not None else ""
+        capacitors_html += f"<br>&nbsp;&nbsp;&nbsp;&nbsp;• <strong>קבל C{idx} ({ctype}):</strong> {val} {unit} (Xc = {xc_val:.2f} Ω{uf_str}) — מפל מתח: <strong>{v_c_i:.2f} V</strong>"
 
 c_total_str = f"{uF_total:.2f} µF" if uF_total is not None else "לא מחושב (אין תדר)"
 
 st.markdown(f"""
 <div class="component-details-box">
     <div class="component-item">
-        📌 <strong>התנגדות כוללת בטור ($R_{{total}}$):</strong> {R_total:.3f} Ω {resistors_detail}
+        📌 <strong>התנגדות כוללת בטור ($R_{{total}}$):</strong> {R_total:.3f} Ω {resistors_html}
     </div>
     <hr style="margin: 12px 0; border: 0; border-top: 1px solid #e2e8f0;">
     <div class="component-item">
-        ⚡ <strong>היגוי קיבולי כולל בטור ($X_{{C,total}}$):</strong> {Xc_total:.2f} Ω {capacitors_detail}
+        ⚡ <strong>היגוי קיבולי כולל בטור ($X_{{C,total}}$):</strong> {Xc_total:.2f} Ω {capacitors_html}
     </div>
     <hr style="margin: 12px 0; border: 0; border-top: 1px solid #e2e8f0;">
     <div class="component-item">
@@ -303,7 +316,7 @@ st.subheader("🌊 גרפי סינוס של מתח וזרם בזמן t")
 V_peak = V_rms * math.sqrt(2)
 I_peak = I_rms * math.sqrt(2)
 
-f_draw = f if use_frequency else 50.0
+f_draw = f if (use_frequency and f) else 50.0
 T = 1 / f_draw
 t = np.linspace(0, 2 * T, 1000)
 
