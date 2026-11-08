@@ -10,7 +10,14 @@ st.set_page_config(
     layout="wide"
 )
 
-# עיצוב מותאם אישית: כרטיסיות, חץ מונפש והבלטת כפתור הסיידבר
+# אתחול רשימות רכיבים דינמיות ב-Session State
+if 'resistors' not in st.session_state:
+    st.session_state.resistors = [21.865]  # נגד ראשון כברירת מחדל
+
+if 'capacitors' not in st.session_state:
+    st.session_state.capacitors = [12.15]  # היגוי קיבולי ראשון (Xc)
+
+# עיצוב מותאם אישית: כרטיסיות, הבלטת פירוט הרכיבים וחץ מונפש
 st.markdown("""
     <style>
     /* עיצוב כרטיסיות התוצאות */
@@ -19,7 +26,7 @@ st.markdown("""
         border: 2px solid #cbd5e1 !important;
         border-radius: 12px !important;
         padding: 15px !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1) !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.08) !important;
     }
     div[data-testid="stMetric"] label {
         color: #334155 !important;
@@ -30,7 +37,7 @@ st.markdown("""
         font-weight: bold !important;
     }
     
-    /* הבלטת כפתור פתיחת ה-Sidebar של Streamlit בפינה */
+    /* הבלטת כפתור פתיחת ה-Sidebar */
     button[data-testid="baseButton-header"] {
         background-color: #0284c7 !important;
         color: white !important;
@@ -39,7 +46,7 @@ st.markdown("""
         font-size: 20px !important;
     }
 
-    /* תיבת הנחיה בולטת עם חץ זז */
+    /* תיבת הנחיה בולטת */
     .input-arrow-box {
         background: linear-gradient(135deg, #0284c7, #0369a1);
         color: white;
@@ -63,6 +70,25 @@ st.markdown("""
         0% { transform: translateX(0px); }
         100% { transform: translateX(-8px); }
     }
+
+    /* עיצוב מוגדל ומאיר עיניים לבלוק פירוט הרכיבים */
+    .component-details-box {
+        background-color: #f8fafc;
+        border-right: 6px solid #0284c7;
+        border-radius: 12px;
+        padding: 22px;
+        margin-top: 15px;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .component-item {
+        font-size: 17px;
+        line-height: 1.9;
+        color: #1e293b;
+    }
+    .component-item strong {
+        color: #0369a1;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -70,15 +96,15 @@ st.markdown("""
 st.markdown("""
     <div class="input-arrow-box">
         <span class="animated-arrow">👈</span>
-        <span>לחץ על החץ בפינה / פתח את סרגל הצד כדי להזין ולשנות נתונים</span>
+        <span>לחץ על החץ בפינה / פתח את סרגל הצד כדי להוסיף רכיבים ולשנות נתונים</span>
     </div>
 """, unsafe_allow_html=True)
 
 # כותרת ראשית עם ברווז אמבטיה בשטריימל
 col_title, col_duck = st.columns([4, 1])
 with col_title:
-    st.title("⚡ מחשבון מעגל AC טורי (R-C)")
-    st.write("גמיש לחלוטין: תמיכה בקלט מינימלי או מקסימלי מפורט לבחירתך.")
+    st.title("⚡ מחשבון מעגל AC טורי מרובה רכיבים")
+    st.write("תוכל להוסיף כמה נגדים וקבלים שתרצה בלחיצה על כפתור +, ולקבל ניתוח מלא.")
 
 with col_duck:
     st.markdown("""
@@ -95,50 +121,66 @@ st.sidebar.header("⚙️ מצב חישוב ופרמטרים")
 
 calc_mode = st.sidebar.radio(
     "בחר מצב חישוב:",
-    ("חישוב רגיל (מזערי/מלא לפי R ו-C/Xc)", "חישוב הפוך (לפי V, I וזוויות/הפרשים)")
+    ("חישוב רגיל (לפי רכיבים דינמיים)", "חישוב הפוך (לפי V, I וזוויות)")
 )
 
 st.sidebar.subheader("📌 נתוני מקור ותדר (אופציונלי)")
 V_rms = st.sidebar.number_input("מתח המקור V (וולט RMS):", min_value=0.1, value=50.0)
 
-# זווית מופע אופציונלית למקור
 use_theta_v = st.sidebar.checkbox("הוסף זווית מופע למקור המתח (θv)", value=True)
 theta_v = st.sidebar.number_input("זווית מופע θv (מעלות):", value=68.0) if use_theta_v else 0.0
 
-# תדר אופציונלי
 use_frequency = st.sidebar.checkbox("הוסף תדר f (נדרש לחישוב C ב-µF)", value=True)
 f = st.sidebar.number_input("תדר f (הרץ):", min_value=0.1, value=50.0) if use_frequency else None
 
-if calc_mode == "חישוב רגיל (מזערי/מלא לפי R ו-C/Xc)":
-    st.sidebar.subheader("🔌 רכיבי המעגל")
-    R = st.sidebar.number_input("התנגדות הנגד R (אוהם):", min_value=0.0, value=21.865)
+if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🔌 נגדים במעגל (R)")
     
-    if use_frequency:
-        c_option = st.sidebar.radio(
-            "איך תרצה להזין את הקבל?", ("קיבול C (במיקרו-פראד uF)", "היגוי קיבולי Xc (באוהם)")
+    # ניהול נגדים דינמיים
+    for i in range(len(st.session_state.resistors)):
+        st.session_state.resistors[i] = st.sidebar.number_input(
+            f"נגד R{i+1} (אוהם):", 
+            min_value=0.0, 
+            value=float(st.session_state.resistors[i]),
+            key=f"res_{i}"
         )
-    else:
-        c_option = "היגוי קיבולי Xc (באוהם)"
-        st.sidebar.caption("ללא תדר, הזנת הקבל היא לפי היגוי קיבולי Xc בלבד.")
     
-    if c_option == "קיבול C (במיקרו-פראד uF)":
-        uF = st.sidebar.number_input("קיבול C (uF):", min_value=0.01, value=262.0)
-        C = uF * 1e-6
-        omega = 2 * math.pi * f
-        Xc = 1 / (omega * C)
-    else:
-        Xc = st.sidebar.number_input("היגוי קיבולי Xc (באוהם):", min_value=0.0, value=12.15)
-        if use_frequency and Xc > 0:
-            omega = 2 * math.pi * f
-            C = 1 / (omega * Xc)
-            uF = C * 1e6
-        else:
-            C, uF = None, None
+    col_r_add, col_r_rem = st.sidebar.columns(2)
+    if col_r_add.button("➕ הוסף נגד (R)", key="add_r"):
+        st.session_state.resistors.append(10.0)
+        st.rerun()
+    if col_r_rem.button("➖ הסר נגד", key="rem_r") and len(st.session_state.resistors) > 1:
+        st.session_state.resistors.pop()
+        st.rerun()
 
-    # חישוב עכבה וזרם
-    Z = math.sqrt(R**2 + Xc**2)
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("⚡ קבלים במעגל (Xc / C)")
+    
+    # ניהול קבלים דינמיים
+    for i in range(len(st.session_state.capacitors)):
+        st.session_state.capacitors[i] = st.sidebar.number_input(
+            f"היגוי קיבולי Xc{i+1} (אוהם):", 
+            min_value=0.0, 
+            value=float(st.session_state.capacitors[i]),
+            key=f"cap_{i}"
+        )
+        
+    col_c_add, col_c_rem = st.sidebar.columns(2)
+    if col_c_add.button("➕ הוסף קבל (Xc)", key="add_c"):
+        st.session_state.capacitors.append(10.0)
+        st.rerun()
+    if col_c_rem.button("➖ הסר קבל", key="rem_c") and len(st.session_state.capacitors) > 1:
+        st.session_state.capacitors.pop()
+        st.rerun()
+
+    # חישוב שקולים בטור
+    R_total = sum(st.session_state.resistors)
+    Xc_total = sum(st.session_state.capacitors)
+    
+    Z = math.sqrt(R_total**2 + Xc_total**2)
     I_rms = V_rms / Z if Z > 0 else 0
-    phi_deg_circuit = math.degrees(math.atan(Xc / R)) if R > 0 else 90.0
+    phi_deg_circuit = math.degrees(math.atan(Xc_total / R_total)) if R_total > 0 else 90.0
     theta_i = theta_v + phi_deg_circuit
 
 else:
@@ -160,30 +202,30 @@ else:
     
     phi_rad = math.radians(phi_deg_circuit)
     Z = V_rms / I_rms if I_rms > 0 else 0
-    R = Z * math.cos(phi_rad)
-    Xc = Z * math.sin(phi_rad)
-    
-    if use_frequency and Xc > 0:
-        omega = 2 * math.pi * f
-        C = 1 / (omega * Xc)
-        uF = C * 1e6
-    else:
-        C, uF = None, None
+    R_total = Z * math.cos(phi_rad)
+    Xc_total = Z * math.sin(phi_rad)
+
+# --- חישוב C שקול ב-µF אם הוזן תדר ---
+if use_frequency and Xc_total > 0:
+    omega = 2 * math.pi * f
+    C_total = 1 / (omega * Xc_total)
+    uF_total = C_total * 1e6
+else:
+    uF_total = None
 
 # --- חישובי זוויות ומתחים וקטוריים ---
+VR_total = I_rms * R_total
+VC_total = I_rms * Xc_total
 theta_vr = theta_i
 theta_vc = theta_i - 90.0
-
-VR_rms = I_rms * R
-VC_rms = I_rms * Xc
 pf = math.cos(math.radians(phi_deg_circuit))
 
-P = I_rms**2 * R
-Q = I_rms**2 * Xc
+P = I_rms**2 * R_total
+Q = I_rms**2 * Xc_total
 S = V_rms * I_rms
 
 # --- הצגת תוצאות ---
-st.subheader("📊 תוצאות החישוב")
+st.subheader("📊 תוצאות החישוב הכוללות")
 
 col1, col2, col3 = st.columns(3)
 col1.metric("עכבה כוללת (Z)", f"{Z:.2f} Ω")
@@ -193,28 +235,65 @@ col3.metric("גורם הספק (cos φ)", f"{pf:.3f}")
 st.write("")
 
 col4, col5, col6 = st.columns(3)
-col4.metric("התנגדות הנגד (R)", f"{R:.3f} Ω")
-col5.metric("היגוי קיבולי (Xc)", f"{Xc:.2f} Ω")
-if uF is not None:
-    col6.metric("קיבול מחושב (C)", f"{uF:.2f} µF")
+col4.metric("התנגדות שקולה (R_total)", f"{R_total:.3f} Ω")
+col5.metric("היגוי קיבולי שקול (Xc_total)", f"{Xc_total:.2f} Ω")
+if uF_total is not None:
+    col6.metric("קיבול שקול (C_total)", f"{uF_total:.2f} µF")
 else:
-    col6.metric("קיבול מחושב (C)", "לא הוגדר תדר")
+    col6.metric("קיבול שקול (C_total)", "לא הוגדר תדר")
 
 st.markdown("---")
 
-# --- פירוט נתונים וזוויות מופע ---
-st.write("### 🔹 פירוט רכיבים, מתחים וזוויות מופע")
-c_text = f"{uF:.2f} µF" if uF is not None else "לא מחושב (אין תדר)"
-st.info(
-    f"- **התנגדות הנגד ($R$):** {R:.3f} Ω\n"
-    f"- **היגוי קיבולי ($X_C$):** {Xc:.2f} Ω\n"
-    f"- **קיבול ($C$):** {c_text}\n"
-    f"- **מתח מקור וקטורי ($V$):** {V_rms:.2f} ∠ {theta_v:.2f}° V\n"
-    f"- **זרם וקטורי במעגל ($I$):** {I_rms:.2f} ∠ {theta_i:.2f}° A\n"
-    f"- **הפרש מופע ($\phi = \\theta_I - \\theta_V$):** {phi_deg_circuit:.2f}°\n"
-    f"- **מתח וקטורי על הנגד ($V_R$):** {VR_rms:.2f} ∠ {theta_vr:.2f}° V\n"
-    f"- **מתח וקטורי על הקבל ($V_C$):** {VC_rms:.2f} ∠ {theta_vc:.2f}° V"
-)
+# --- פירוט רכיבים מורחב, מוגדל ומאיר עיניים ---
+st.subheader("🔹 פירוט מורחב של רכיבי המעגל והמתחים")
+
+resistors_detail = ""
+if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
+    for idx, r_val in enumerate(st.session_state.resistors):
+        v_r_i = I_rms * r_val
+        resistors_detail += f"<br>&nbsp;&nbsp;&nbsp;&nbsp;• <strong>נגד R{idx+1}:</strong> {r_val:.2f} Ω (מפלי מתח: {v_r_i:.2f} V)"
+
+capacitors_detail = ""
+if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
+    for idx, xc_val in enumerate(st.session_state.capacitors):
+        v_c_i = I_rms * xc_val
+        c_i_uf = (1 / (2 * math.pi * f * xc_val) * 1e6) if (use_frequency and xc_val > 0) else None
+        c_i_str = f" | קיבול: {c_i_uf:.2f} µF" if c_i_uf else ""
+        capacitors_detail += f"<br>&nbsp;&nbsp;&nbsp;&nbsp;• <strong>קבל C{idx+1}:</strong> Xc = {xc_val:.2f} Ω {c_i_str} (מפלי מתח: {v_c_i:.2f} V)"
+
+c_total_str = f"{uF_total:.2f} µF" if uF_total is not None else "לא מחושב (אין תדר)"
+
+st.markdown(f"""
+<div class="component-details-box">
+    <div class="component-item">
+        📌 <strong>התנגדות כוללת בטור ($R_{{total}}$):</strong> {R_total:.3f} Ω {resistors_detail}
+    </div>
+    <hr style="margin: 12px 0; border: 0; border-top: 1px solid #e2e8f0;">
+    <div class="component-item">
+        ⚡ <strong>היגוי קיבולי כולל בטור ($X_{{C,total}}$):</strong> {Xc_total:.2f} Ω {capacitors_detail}
+    </div>
+    <hr style="margin: 12px 0; border: 0; border-top: 1px solid #e2e8f0;">
+    <div class="component-item">
+        🔋 <strong>קיבול שקול מחושב ($C_{{total}}$):</strong> {c_total_str}
+    </div>
+    <hr style="margin: 12px 0; border: 0; border-top: 1px solid #e2e8f0;">
+    <div class="component-item">
+        📐 <strong>מתח מקור וקטורי ($V$):</strong> {V_rms:.2f} ∠ {theta_v:.2f}° V
+    </div>
+    <div class="component-item">
+        🌊 <strong>זרם וקטורי במעגל ($I$):</strong> {I_rms:.2f} ∠ {theta_i:.2f}° A
+    </div>
+    <div class="component-item">
+        🔄 <strong>הפרש מופע כולל ($\phi = \\theta_I - \\theta_V$):</strong> {phi_deg_circuit:.2f}° (הזרם מקדים את המתח)
+    </div>
+    <div class="component-item">
+        🔴 <strong>מתח שקול על הנגדים ($V_{{R,total}}$):</strong> {VR_total:.2f} ∠ {theta_vr:.2f}° V
+    </div>
+    <div class="component-item">
+        🔵 <strong>מתח שקול על הקבלים ($V_{{C,total}}$):</strong> {VC_total:.2f} ∠ {theta_vc:.2f}° V
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 st.markdown("---")
 
@@ -259,7 +338,7 @@ st.pyplot(fig_sine)
 st.markdown("---")
 
 # --- חלק ויזואלי 2: משולשים ---
-st.subheader("📐 ייצוג ויזואלי של המשולשים")
+st.subheader("📐 ייצוג ויזואלי של המשולשים השקולים")
 
 def plot_triangle(x, y, x_label, y_label, hypotenuse_label, title, unit):
     fig, ax = plt.subplots(figsize=(7, 5))
@@ -281,10 +360,10 @@ def plot_triangle(x, y, x_label, y_label, hypotenuse_label, title, unit):
     return fig
 
 st.write("#### 1. משולש עכבות")
-st.pyplot(plot_triangle(R, Xc, "R", "Xc", "Z", "משולש עכבות (Impedance Triangle)", "Ω"))
+st.pyplot(plot_triangle(R_total, Xc_total, "R_total", "Xc_total", "Z", "משולש עכבות (Impedance Triangle)", "Ω"))
 
 st.write("#### 2. משולש מתחים")
-st.pyplot(plot_triangle(VR_rms, VC_rms, "VR", "VC", "V", "משולש מתחים (Voltage Triangle)", "V"))
+st.pyplot(plot_triangle(VR_total, VC_total, "VR_total", "VC_total", "V", "משולש מתחים (Voltage Triangle)", "V"))
 
 st.write("#### 3. משולש הספקים")
 st.pyplot(plot_triangle(P, Q, "P", "Q", "S", "משולש הספקים (Power Triangle)", "VA/W/VAR"))
