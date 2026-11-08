@@ -51,27 +51,27 @@ st.sidebar.header("⚙️ מצב חישוב ופרמטרים")
 
 calc_mode = st.sidebar.radio(
     "בחר מצב חישוב:",
-    ("חישוב רגיל (לפי R ו-C/Xc)", "חישוב הפוך (לפי V, I וזווית מופע φ)")
+    ("חישוב הפוך (לפי V, I וזוויות מופע θv, θi)", "חישוב רגיל (לפי R ו-C/Xc)")
 )
 
-V = st.sidebar.number_input("מתח המקור V (וולט):", min_value=0.1, value=50.0)
-theta_v = st.sidebar.number_input("זווית מופע של מקור המתח θv (במעלות):", value=68.0)
 f = st.sidebar.number_input("תדר f (הרץ):", min_value=0.1, value=50.0)
 
 if calc_mode == "חישוב רגיל (לפי R ו-C/Xc)":
-    R = st.sidebar.number_input("התנגדות הנגד R (אוהם):", min_value=0.1, value=8.0)
+    V = st.sidebar.number_input("מתח המקור V (וולט):", min_value=0.1, value=50.0)
+    theta_v = st.sidebar.number_input("זווית מופע של מקור המתח θv (במעלות):", value=68.0)
+    R = st.sidebar.number_input("התנגדות הנגד R (אוהם):", min_value=0.1, value=21.865)
     
     c_option = st.sidebar.radio(
-        "איך תרצה להזין את הקבל?", ("היגוי קיבולי Xc (באוהם)", "קיבול C (במיקרו-פראד uF)")
+        "איך תרצה להזין את הקבל?", ("קיבול C (במיקרו-פראד uF)", "היגוי קיבולי Xc (באוהם)")
     )
     
     if c_option == "קיבול C (במיקרו-פראד uF)":
-        uF = st.sidebar.number_input("קיבול C (uF):", min_value=0.01, value=795.77)
+        uF = st.sidebar.number_input("קיבול C (uF):", min_value=0.01, value=262.0)
         C = uF * 1e-6
         omega = 2 * math.pi * f
         Xc = 1 / (omega * C)
     else:
-        Xc = st.sidebar.number_input("היגוי קיבולי Xc (באוהם):", min_value=0.1, value=4.0)
+        Xc = st.sidebar.number_input("היגוי קיבולי Xc (באוהם):", min_value=0.1, value=12.15)
         omega = 2 * math.pi * f
         C = 1 / (omega * Xc)
         uF = C * 1e6
@@ -79,28 +79,29 @@ if calc_mode == "חישוב רגיל (לפי R ו-C/Xc)":
     Z = math.sqrt(R**2 + Xc**2)
     I = V / Z
     phi_deg_circuit = math.degrees(math.atan(Xc / R))
+    theta_i = theta_v + phi_deg_circuit
 
 else:
-    # --- מצב חישוב הפוך (ללא חסימת זוויות) ---
+    # --- מצב חישוב הפוך (לפי הזוויות הטהורות של המתח והזרם) ---
+    V = st.sidebar.number_input("מתח המקור V (וולט):", min_value=0.1, value=50.0)
+    theta_v = st.sidebar.number_input("זווית מופע של המתח θv (במעלות):", value=68.0)
+    
     I = st.sidebar.number_input("זרם המעגל I (אמפר):", min_value=0.01, value=2.0)
+    theta_i = st.sidebar.number_input("זווית מופע של הזרם θi (במעלות):", value=97.0)
     
-    # הוסרה הגבלת המקסימום/מינימום כדי שאפשר יהיה להזין כל זווית
-    phi_deg_circuit = st.sidebar.number_input(
-        "הפרש מופע φ בין מתח לזרם (במעלות):", 
-        value=26.57
-    )
-    
+    # חישוב הפרש המופע האמיתי: phi = theta_i - theta_v
+    phi_deg_circuit = theta_i - theta_v
     phi_rad = math.radians(phi_deg_circuit)
+    
     Z = V / I
     R = Z * math.cos(phi_rad)
     Xc = Z * math.sin(phi_rad)
     
     omega = 2 * math.pi * f
-    C = 1 / (omega * Xc) if Xc != 0 else 0
+    C = 1 / (omega * Xc) if Xc > 0 else 0
     uF = C * 1e6
 
 # --- חישובי זוויות ומתחים וקטוריים ---
-theta_i = theta_v + phi_deg_circuit
 theta_vr = theta_i
 theta_vc = theta_i - 90.0
 
@@ -123,7 +124,7 @@ col3.metric("גורם הספק (cos φ)", f"{pf:.3f}")
 st.write("")
 
 col4, col5, col6 = st.columns(3)
-col4.metric("התנגדות הנגד (R)", f"{R:.2f} Ω")
+col4.metric("התנגדות הנגד (R)", f"{R:.3f} Ω")
 col5.metric("היגוי קיבולי (Xc)", f"{Xc:.2f} Ω")
 col6.metric("קיבול מחושב (C)", f"{uF:.2f} µF")
 
@@ -132,13 +133,13 @@ st.markdown("---")
 # --- פירוט נתונים וזוויות מופע ---
 st.write("### 🔹 פירוט רכיבים, מתחים וזוויות מופע")
 st.info(
-    f"- **התנגדות הנגד ($R$):** {R:.2f} Ω\n"
+    f"- **התנגדות הנגד ($R$):** {R:.3f} Ω\n"
     f"- **היגוי קיבולי ($X_C$):** {Xc:.2f} Ω\n"
     f"- **מתח מקור וקטורי ($V$):** {V:.2f} ∠ {theta_v:.2f}° V\n"
     f"- **זרם וקטורי במעגל ($I$):** {I:.2f} ∠ {theta_i:.2f}° A\n"
+    f"- **הפרש מופע מחושב ($\phi = \\theta_I - \\theta_V$):** {phi_deg_circuit:.2f}°\n"
     f"- **מתח וקטורי על הנגד ($V_R$):** {VR:.2f} ∠ {theta_vr:.2f}° V\n"
-    f"- **מתח וקטורי על הקבל ($V_C$):** {VC:.2f} ∠ {theta_vc:.2f}° V\n"
-    f"- **הפרש מופע ($\phi = \\theta_I - \\theta_V$):** {phi_deg_circuit:.2f}°"
+    f"- **מתח וקטורי על הקבל ($V_C$):** {VC:.2f} ∠ {theta_vc:.2f}° V"
 )
 
 st.markdown("---")
@@ -150,7 +151,6 @@ def plot_triangle(x, y, x_label, y_label, hypotenuse_label, title, unit):
     ax.quiver(x, 0, 0, -y, angles='xy', scale_units='xy', scale=1, color='#dc2626', label=f'{y_label} = {y:.2f} {unit}')
     ax.quiver(0, 0, x, -y, angles='xy', scale_units='xy', scale=1, color='#16a34a', label=f'{hypotenuse_label} = {math.sqrt(x**2 + y**2):.2f} {unit}')
     
-    # התאמה דינמית של גבולות הגרף גם לערכים שליליים
     x_min = min(0, x) * 1.25 if x < 0 else -abs(x)*0.1
     x_max = max(0, x) * 1.25 if x > 0 else abs(x)*0.1
     y_min = -abs(y)*1.25
