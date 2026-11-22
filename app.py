@@ -35,7 +35,6 @@ def load_state_from_url():
             encoded = st.query_params["state"]
             decoded_json = base64.urlsafe_b64decode(encoded.encode("utf-8")).decode("utf-8")
             loaded = json.loads(decoded_json)
-            # מיזוג עם ברירת מחדל למניעת חוסרים
             merged = DEFAULT_STATE.copy()
             merged.update(loaded)
             return merged
@@ -120,7 +119,7 @@ st.markdown("""
 col_title, col_duck = st.columns([4, 1])
 with col_title:
     st.title("⚡ מחשבון מעגל AC טורי מרובה רכיבים (R-L-C)")
-    st.write("ניתוח חשמלי מלא, הספק לכל רכיב, שמירה אוטומטית וייצוג ויזואלי.")
+    st.write("ניתוח חשמלי מלא בדיוק של 3 ספרות אחרי הנקודה, הספק לכל רכיב וייצוג ויזואלי.")
 
 with col_duck:
     st.markdown("""
@@ -135,7 +134,6 @@ with col_duck:
 # --- תפריט קלט בצד (סיידבר) ---
 st.sidebar.header("⚙️ מצב חישוב ופרמטרים")
 
-# כפתור איפוס מהיר
 if st.sidebar.button("🔄 איפוס נתונים לברירת מחדל"):
     st.query_params.clear()
     for k, v in DEFAULT_STATE.items():
@@ -148,13 +146,13 @@ calc_mode = st.sidebar.radio("בחר מצב חישוב:", mode_options, index=mo
 st.session_state.calc_mode = calc_mode
 
 st.sidebar.subheader("📌 נתוני מקור ותדר")
-V_rms = st.sidebar.number_input("מתח המקור V (וולט RMS):", min_value=0.1, value=float(st.session_state.V_rms))
+V_rms = st.sidebar.number_input("מתח המקור V (וולט RMS):", min_value=0.001, value=float(st.session_state.V_rms), format="%.3f")
 st.session_state.V_rms = V_rms
 
 use_theta_v = st.sidebar.checkbox("הוסף זווית מופע למקור המתח (θv)", value=bool(st.session_state.use_theta_v))
 st.session_state.use_theta_v = use_theta_v
 if use_theta_v:
-    theta_v = st.sidebar.number_input("זווית מופע θv (מעלות):", value=float(st.session_state.theta_v))
+    theta_v = st.sidebar.number_input("זווית מופע θv (מעלות):", value=float(st.session_state.theta_v), format="%.3f")
     st.session_state.theta_v = theta_v
 else:
     theta_v = 0.0
@@ -162,7 +160,7 @@ else:
 use_frequency = st.sidebar.checkbox("הוסף תדר f (נדרש להמרת L ו-C)", value=bool(st.session_state.use_frequency))
 st.session_state.use_frequency = use_frequency
 if use_frequency:
-    f = st.sidebar.number_input("תדר f (הרץ):", min_value=0.1, value=float(st.session_state.f))
+    f = st.sidebar.number_input("תדר f (הרץ):", min_value=0.001, value=float(st.session_state.f), format="%.3f")
     st.session_state.f = f
 else:
     f = None
@@ -187,7 +185,7 @@ if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
     
     for i in range(len(st.session_state.resistors)):
         col_r_val, col_r_unit = st.sidebar.columns([2, 1])
-        r_val = col_r_val.number_input(f"נגד R{i+1}:", min_value=0.0, value=float(st.session_state.resistors[i]["val"]), key=f"r_val_{i}")
+        r_val = col_r_val.number_input(f"נגד R{i+1}:", min_value=0.0, value=float(st.session_state.resistors[i]["val"]), format="%.3f", key=f"r_val_{i}")
         r_units = ["Ω", "kΩ", "MΩ", "mΩ"]
         curr_r_u = st.session_state.resistors[i]["unit"] if st.session_state.resistors[i]["unit"] in r_units else "Ω"
         r_unit = col_r_unit.selectbox("יחידה:", r_units, index=r_units.index(curr_r_u), key=f"r_unit_{i}")
@@ -220,7 +218,7 @@ if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
         if l_type == "L (השראות)":
             l_units_list = ["mH", "µH", "H", "nH"]
             curr_unit = st.session_state.inductors[i]["unit"] if st.session_state.inductors[i]["unit"] in l_units_list else "mH"
-            l_val = col_l_val.number_input(f"ערך L{i+1}:", min_value=0.0, value=float(st.session_state.inductors[i]["val"]), key=f"l_val_{i}")
+            l_val = col_l_val.number_input(f"ערך L{i+1}:", min_value=0.0, value=float(st.session_state.inductors[i]["val"]), format="%.3f", key=f"l_val_{i}")
             l_unit = col_l_unit.selectbox("יחידה:", l_units_list, index=l_units_list.index(curr_unit), key=f"l_unit_{i}")
             
             l_henrys = l_val * L_MULTIPLIERS[l_unit]
@@ -233,7 +231,7 @@ if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
         else:
             xl_units_list = ["Ω", "kΩ", "mΩ"]
             curr_unit = st.session_state.inductors[i]["unit"] if st.session_state.inductors[i]["unit"] in xl_units_list else "Ω"
-            l_val = col_l_val.number_input(f"ערך XL{i+1}:", min_value=0.0, value=float(st.session_state.inductors[i]["val"]), key=f"l_val_{i}")
+            l_val = col_l_val.number_input(f"ערך XL{i+1}:", min_value=0.0, value=float(st.session_state.inductors[i]["val"]), format="%.3f", key=f"l_val_{i}")
             l_unit = col_l_unit.selectbox("יחידה:", xl_units_list, index=xl_units_list.index(curr_unit), key=f"l_unit_{i}")
             
             xl_ohms = l_val * X_MULTIPLIERS[l_unit]
@@ -266,7 +264,7 @@ if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
         if c_type == "C (קיבול)":
             c_units_list = ["µF", "nF", "pF", "mF", "F"]
             curr_unit = st.session_state.capacitors[i]["unit"] if st.session_state.capacitors[i]["unit"] in c_units_list else "µF"
-            c_val = col_c_val.number_input(f"ערך C{i+1}:", min_value=0.01, value=float(st.session_state.capacitors[i]["val"]), key=f"c_val_{i}")
+            c_val = col_c_val.number_input(f"ערך C{i+1}:", min_value=0.001, value=float(st.session_state.capacitors[i]["val"]), format="%.3f", key=f"c_val_{i}")
             c_unit = col_c_unit.selectbox("יחידה:", c_units_list, index=c_units_list.index(curr_unit), key=f"c_unit_{i}")
             
             c_farads = c_val * C_MULTIPLIERS[c_unit]
@@ -279,7 +277,7 @@ if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
         else:
             xc_units_list = ["Ω", "kΩ", "mΩ"]
             curr_unit = st.session_state.capacitors[i]["unit"] if st.session_state.capacitors[i]["unit"] in xc_units_list else "Ω"
-            c_val = col_c_val.number_input(f"ערך Xc{i+1}:", min_value=0.0, value=float(st.session_state.capacitors[i]["val"]), key=f"c_val_{i}")
+            c_val = col_c_val.number_input(f"ערך Xc{i+1}:", min_value=0.0, value=float(st.session_state.capacitors[i]["val"]), format="%.3f", key=f"c_val_{i}")
             c_unit = col_c_unit.selectbox("יחידה:", xc_units_list, index=xc_units_list.index(curr_unit), key=f"c_unit_{i}")
             
             xc_ohms = c_val * X_MULTIPLIERS[c_unit]
@@ -311,7 +309,7 @@ if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
 else:
     # --- מצב חישוב הפוך ---
     st.sidebar.subheader("🔄 נתוני זרם וזוויות")
-    I_rms = st.sidebar.number_input("זרם המעגל I (אמפר RMS):", min_value=0.01, value=float(st.session_state.I_rms))
+    I_rms = st.sidebar.number_input("זרם המעגל I (אמפר RMS):", min_value=0.001, value=float(st.session_state.I_rms), format="%.3f")
     st.session_state.I_rms = I_rms
     
     angle_modes = ("זווית זרם ישירה (θi)", "הפרש מופע ישיר (φ = θi - θv)")
@@ -320,11 +318,11 @@ else:
     st.session_state.angle_input_mode = angle_input_mode
     
     if angle_input_mode == "זווית זרם ישירה (θi)":
-        theta_i = st.sidebar.number_input("זווית מופע של הזרם θi (במעלות):", value=float(st.session_state.theta_i))
+        theta_i = st.sidebar.number_input("זווית מופע של הזרם θi (במעלות):", value=float(st.session_state.theta_i), format="%.3f")
         st.session_state.theta_i = theta_i
         phi_deg_circuit = theta_i - theta_v
     else:
-        phi_deg_circuit = st.sidebar.number_input("הפרש מופע φ (במעלות, + מקדים / - מפגר):", value=float(st.session_state.phi_deg_input))
+        phi_deg_circuit = st.sidebar.number_input("הפרש מופע φ (במעלות, + מקדים / - מפגר):", value=float(st.session_state.phi_deg_input), format="%.3f")
         st.session_state.phi_deg_input = phi_deg_circuit
         theta_i = theta_v + phi_deg_circuit
     
@@ -346,7 +344,7 @@ else:
 save_state_to_url({k: st.session_state[k] for k in DEFAULT_STATE})
 
 # זיהוי אופי המעגל
-if abs(X_net) < 1e-5:
+if abs(X_net) < 1e-6:
     circuit_nature = "התנגדותי טהור / תהודה (Resonance)"
 elif X_net > 0:
     circuit_nature = "השראי (Inductive - זרם מפגר)"
@@ -372,39 +370,39 @@ P = I_rms**2 * R_total
 Q_net = I_rms**2 * X_net
 S = V_rms * I_rms
 
-# --- הצגת תוצאות כוללות ---
+# --- הצגת תוצאות כוללות (בדיוק של 3 ספרות אחרי הנקודה) ---
 st.subheader("📊 תוצאות החישוב הכוללות")
 st.info(f"**אופי המעגל:** {circuit_nature}")
 
 c1, c2, c3 = st.columns(3)
-c1.metric("עכבה כוללת (Z)", f"{Z:.2f} Ω")
-c2.metric("זרם במעגל (I)", f"{I_rms:.2f} A")
+c1.metric("עכבה כוללת (Z)", f"{Z:.3f} Ω")
+c2.metric("זרם במעגל (I)", f"{I_rms:.3f} A")
 c3.metric("גורם הספק (cos φ)", f"{pf:.3f}")
 
 st.write("")
 
 c4, c5, c6 = st.columns(3)
 c4.metric("התנגדות שקולה (R)", f"{R_total:.3f} Ω")
-c5.metric("היגוי השראי שקול (XL)", f"{XL_total:.2f} Ω")
-c6.metric("היגוי קיבולי שקול (Xc)", f"{Xc_total:.2f} Ω")
+c5.metric("היגוי השראי שקול (XL)", f"{XL_total:.3f} Ω")
+c6.metric("היגוי קיבולי שקול (Xc)", f"{Xc_total:.3f} Ω")
 
 st.write("")
 
 c7, c8, c9 = st.columns(3)
-c7.metric("הספק אקטיבי כולל (P)", f"{P:.2f} W")
-c8.metric("הספק ריאקטיבי נטו (Q)", f"{Q_net:.2f} VAR")
-c9.metric("הספק מדומה כולל (S)", f"{S:.2f} VA")
+c7.metric("הספק אקטיבי כולל (P)", f"{P:.3f} W")
+c8.metric("הספק ריאקטיבי נטו (Q)", f"{Q_net:.3f} VAR")
+c9.metric("הספק מדומה כולל (S)", f"{S:.3f} VA")
 
 if mH_total is not None or uF_total is not None:
     st.write("")
     ce1, ce2, ce3 = st.columns(3)
-    ce1.metric("השראות שקולה (L)", f"{mH_total:.2f} mH" if mH_total is not None else "—")
-    ce2.metric("קיבול שקול (C)", f"{uF_total:.2f} µF" if uF_total is not None else "—")
-    ce3.metric("היגוי שקול נטו (XL - Xc)", f"{X_net:.2f} Ω")
+    ce1.metric("השראות שקולה (L)", f"{mH_total:.3f} mH" if mH_total is not None else "—")
+    ce2.metric("קיבול שקול (C)", f"{uF_total:.3f} µF" if uF_total is not None else "—")
+    ce3.metric("היגוי שקול נטו (XL - Xc)", f"{X_net:.3f} Ω")
 
 st.markdown("---")
 
-# --- פירוט רכיבים בכרטיסיות קומפקטיות ---
+# --- פירוט רכיבים בכרטיסיות קומפקטיות (בדיוק של 3 ספרות אחרי הנקודה) ---
 st.subheader("🔹 פירוט רכיבים, מתחים והספקים")
 
 if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)" and r_details_list:
@@ -413,10 +411,10 @@ if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)" and r
         v_r_i = I_rms * ohms
         p_r_i = (I_rms ** 2) * ohms
         rc1, rc2, rc3, rc4 = st.columns(4)
-        rc1.metric(f"נגד R{idx}", f"{val} {unit}")
-        rc2.metric("התנגדות (Ω)", f"{ohms:.2f} Ω")
-        rc3.metric(f"מפל מתח (VR{idx})", f"{v_r_i:.2f} V")
-        rc4.metric(f"הספק (P{idx})", f"{p_r_i:.2f} W")
+        rc1.metric(f"נגד R{idx}", f"{val:.3f} {unit}")
+        rc2.metric("התנגדות (Ω)", f"{ohms:.3f} Ω")
+        rc3.metric(f"מפל מתח (VR{idx})", f"{v_r_i:.3f} V")
+        rc4.metric(f"הספק (P{idx})", f"{p_r_i:.3f} W")
         st.write("")
 
 if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)" and l_details_list:
@@ -425,10 +423,10 @@ if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)" and l
         v_l_i = I_rms * xl_val
         q_l_i = (I_rms ** 2) * xl_val
         lc1, lc2, lc3, lc4 = st.columns(4)
-        lc1.metric(f"סליל L{idx}", f"{val} {unit}")
-        lc2.metric(f"היגוי (XL{idx})", f"{xl_val:.2f} Ω")
-        lc3.metric(f"מפל מתח (VL{idx})", f"{v_l_i:.2f} V")
-        lc4.metric(f"הספק השראי (QL{idx})", f"{q_l_i:.2f} VAR")
+        lc1.metric(f"סליל L{idx}", f"{val:.3f} {unit}")
+        lc2.metric(f"היגוי (XL{idx})", f"{xl_val:.3f} Ω")
+        lc3.metric(f"מפל מתח (VL{idx})", f"{v_l_i:.3f} V")
+        lc4.metric(f"הספק השראי (QL{idx})", f"{q_l_i:.3f} VAR")
         st.write("")
 
 if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)" and c_details_list:
@@ -437,24 +435,24 @@ if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)" and c
         v_c_i = I_rms * xc_val
         q_c_i = (I_rms ** 2) * xc_val
         cc1, cc2, cc3, cc4 = st.columns(4)
-        cc1.metric(f"קבל C{idx}", f"{val} {unit}")
-        cc2.metric(f"היגוי (Xc{idx})", f"{xc_val:.2f} Ω")
-        cc3.metric(f"מפל מתח (VC{idx})", f"{v_c_i:.2f} V")
-        cc4.metric(f"הספק קיבולי (QC{idx})", f"{q_c_i:.2f} VAR")
+        cc1.metric(f"קבל C{idx}", f"{val:.3f} {unit}")
+        cc2.metric(f"היגוי (Xc{idx})", f"{xc_val:.3f} Ω")
+        cc3.metric(f"מפל מתח (VC{idx})", f"{v_c_i:.3f} V")
+        cc4.metric(f"הספק קיבולי (QC{idx})", f"{q_c_i:.3f} VAR")
         st.write("")
 
 st.write("#### 📐 זוויות ופאזורים במעגל")
 ac1, ac2, ac3 = st.columns(3)
-ac1.metric("מתח מקור וקטורי (V)", f"{V_rms:.2f} ∠ {theta_v:.1f}° V")
-ac2.metric("זרם וקטורי (I)", f"{I_rms:.2f} ∠ {theta_i:.1f}° A")
-ac3.metric("הפרש מופע (φ = θi - θv)", f"{phi_deg_circuit:.2f}°")
+ac1.metric("מתח מקור וקטורי (V)", f"{V_rms:.3f} ∠ {theta_v:.3f}° V")
+ac2.metric("זרם וקטורי (I)", f"{I_rms:.3f} ∠ {theta_i:.3f}° A")
+ac3.metric("הפרש מופע (φ = θi - θv)", f"{phi_deg_circuit:.3f}°")
 
 st.write("")
 
 ac4, ac5, ac6 = st.columns(3)
-ac4.metric("מתח שקול נגדים (VR)", f"{VR_total:.2f} ∠ {theta_vr:.1f}° V")
-ac5.metric("מתח שקול סלילים (VL)", f"{VL_total:.2f} ∠ {theta_vl:.1f}° V")
-ac6.metric("מתח שקול קבלים (VC)", f"{VC_total:.2f} ∠ {theta_vc:.1f}° V")
+ac4.metric("מתח שקול נגדים (VR)", f"{VR_total:.3f} ∠ {theta_vr:.3f}° V")
+ac5.metric("מתח שקול סלילים (VL)", f"{VL_total:.3f} ∠ {theta_vl:.3f}° V")
+ac6.metric("מתח שקול קבלים (VC)", f"{VC_total:.3f} ∠ {theta_vc:.3f}° V")
 
 st.markdown("---")
 
@@ -479,20 +477,20 @@ color_i = '#dc2626'
 
 ax_v.set_xlabel('זמן t (מילי-שניות)', fontsize=11)
 ax_v.set_ylabel('מתח v(t) [V]', color=color_v, fontsize=11, fontweight='bold')
-line1 = ax_v.plot(t * 1000, v_t, color=color_v, linewidth=2, label=f'v(t) [Vm={V_peak:.1f}V, θv={theta_v:.1f}°]')
+line1 = ax_v.plot(t * 1000, v_t, color=color_v, linewidth=2, label=f'v(t) [Vm={V_peak:.3f}V, θv={theta_v:.2f}°]')
 ax_v.tick_params(axis='y', labelcolor=color_v)
 ax_v.grid(True, linestyle='--', alpha=0.5)
 
 ax_i = ax_v.twinx()
 ax_i.set_ylabel('זרם i(t) [A]', color=color_i, fontsize=11, fontweight='bold')
-line2 = ax_i.plot(t * 1000, i_t, color=color_i, linewidth=2, linestyle='--', label=f'i(t) [Im={I_peak:.1f}A, θi={theta_i:.1f}°]')
+line2 = ax_i.plot(t * 1000, i_t, color=color_i, linewidth=2, linestyle='--', label=f'i(t) [Im={I_peak:.3f}A, θi={theta_i:.2f}°]')
 ax_i.tick_params(axis='y', labelcolor=color_i)
 
 lines = line1 + line2
 labels = [l.get_label() for l in lines]
 ax_v.legend(lines, labels, loc='upper right', fontsize=10)
 
-plt.title(f"אותות סינוס בזמן (הפרש מופע φ = {phi_deg_circuit:.1f}°)", fontsize=13, fontweight='bold', pad=10)
+plt.title(f"אותות סינוס בזמן (הפרש מופע φ = {phi_deg_circuit:.3f}°)", fontsize=13, fontweight='bold', pad=10)
 plt.tight_layout()
 st.pyplot(fig_sine)
 
@@ -503,9 +501,9 @@ st.subheader("📐 ייצוג ויזואלי של המשולשים השקולי�
 
 def plot_triangle(x, y_net, x_label, y_label, hypotenuse_label, title, unit):
     fig, ax = plt.subplots(figsize=(7, 4.5))
-    ax.quiver(0, 0, x, 0, angles='xy', scale_units='xy', scale=1, color='#2563eb', label=f'{x_label} = {x:.2f} {unit}')
-    ax.quiver(x, 0, 0, y_net, angles='xy', scale_units='xy', scale=1, color='#dc2626', label=f'{y_label} = {y_net:.2f} {unit}')
-    ax.quiver(0, 0, x, y_net, angles='xy', scale_units='xy', scale=1, color='#16a34a', label=f'{hypotenuse_label} = {math.sqrt(x**2 + y_net**2):.2f} {unit}')
+    ax.quiver(0, 0, x, 0, angles='xy', scale_units='xy', scale=1, color='#2563eb', label=f'{x_label} = {x:.3f} {unit}')
+    ax.quiver(x, 0, 0, y_net, angles='xy', scale_units='xy', scale=1, color='#dc2626', label=f'{y_label} = {y_net:.3f} {unit}')
+    ax.quiver(0, 0, x, y_net, angles='xy', scale_units='xy', scale=1, color='#16a34a', label=f'{hypotenuse_label} = {math.sqrt(x**2 + y_net**2):.3f} {unit}')
     
     x_min = min(0, x) * 1.25 if x < 0 else -max(abs(x), 1)*0.1
     x_max = max(0, x) * 1.25 if x > 0 else max(abs(x), 1)*0.1
