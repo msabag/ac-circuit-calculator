@@ -15,7 +15,8 @@ st.set_page_config(
 # --- מנגנון שמירה וטעינה מכתובת ה-URL (לכל משתמש בנפרד) ---
 DEFAULT_STATE = {
     "calc_mode": "חישוב רגיל (לפי רכיבים דינמיים)",
-    "V_rms": 50.0,
+    "v_type": "מתח אפקטיבי (V_rms)",
+    "V_input": 50.0,
     "use_theta_v": True,
     "theta_v": 68.0,
     "use_frequency": True,
@@ -119,7 +120,7 @@ st.markdown("""
 col_title, col_duck = st.columns([4, 1])
 with col_title:
     st.title("⚡ מחשבון מעגל AC טורי מרובה רכיבים (R-L-C)")
-    st.write("ניתוח חשמלי מלא בדיוק של 3 ספרות אחרי הנקודה, הספק לכל רכיב וייצוג ויזואלי.")
+    st.write("ניתוח חשמלי מלא בדיוק של 3 ספרות אחרי הנקודה, תמיכה במתח אפקטיבי/מקסימלי והספק לכל רכיב.")
 
 with col_duck:
     st.markdown("""
@@ -146,8 +147,23 @@ calc_mode = st.sidebar.radio("בחר מצב חישוב:", mode_options, index=mo
 st.session_state.calc_mode = calc_mode
 
 st.sidebar.subheader("📌 נתוני מקור ותדר")
-V_rms = st.sidebar.number_input("מתח המקור V (וולט RMS):", min_value=0.001, value=float(st.session_state.V_rms), format="%.3f")
-st.session_state.V_rms = V_rms
+
+# בחירת סוג המתח: אפקטיבי או מקסימלי
+v_type_options = ("מתח אפקטיבי (V_rms)", "מתח מקסימלי / שיא (V_peak)")
+v_type_idx = v_type_options.index(st.session_state.v_type) if st.session_state.v_type in v_type_options else 0
+v_type = st.sidebar.radio("סוג מתח המקור:", v_type_options, index=v_type_idx)
+st.session_state.v_type = v_type
+
+v_label = "מתח המקור V_rms (וולט):" if v_type == "מתח אפקטיבי (V_rms)" else "מתח מקסימלי V_peak (וולט):"
+V_input = st.sidebar.number_input(v_label, min_value=0.001, value=float(st.session_state.V_input), format="%.3f")
+st.session_state.V_input = V_input
+
+if v_type == "מתח אפקטיבי (V_rms)":
+    V_rms = V_input
+    V_peak = V_rms * math.sqrt(2)
+else:
+    V_peak = V_input
+    V_rms = V_peak / math.sqrt(2)
 
 use_theta_v = st.sidebar.checkbox("הוסף זווית מופע למקור המתח (θv)", value=bool(st.session_state.use_theta_v))
 st.session_state.use_theta_v = use_theta_v
@@ -355,7 +371,8 @@ else:
 mH_total = (XL_total / (2 * math.pi * f) * 1e3) if (use_frequency and f and XL_total > 0) else None
 uF_total = (1 / (2 * math.pi * f * Xc_total) * 1e6) if (use_frequency and f and Xc_total > 0) else None
 
-# חישוב מתחים והספקים
+# חישוב מתחים, זרמי שיא והספקים
+I_peak = I_rms * math.sqrt(2)
 VR_total = I_rms * R_total
 VL_total = I_rms * XL_total
 VC_total = I_rms * Xc_total
@@ -376,8 +393,15 @@ st.info(f"**אופי המעגל:** {circuit_nature}")
 
 c1, c2, c3 = st.columns(3)
 c1.metric("עכבה כוללת (Z)", f"{Z:.3f} Ω")
-c2.metric("זרם במעגל (I)", f"{I_rms:.3f} A")
+c2.metric("זרם אפקטיבי (I_rms)", f"{I_rms:.3f} A")
 c3.metric("גורם הספק (cos φ)", f"{pf:.3f}")
+
+st.write("")
+
+cv1, cv2, cv3 = st.columns(3)
+cv1.metric("מתח אפקטיבי (V_rms)", f"{V_rms:.3f} V")
+cv2.metric("מתח מקסימלי (V_peak)", f"{V_peak:.3f} V")
+cv3.metric("זרם מקסימלי (I_peak)", f"{I_peak:.3f} A")
 
 st.write("")
 
@@ -402,7 +426,7 @@ if mH_total is not None or uF_total is not None:
 
 st.markdown("---")
 
-# --- פירוט רכיבים בכרטיסיות קומפקטיות (בדיוק של 3 ספרות אחרי הנקודה) ---
+# --- פירוט רכיבים בכרטיסיות קומפקטיות ---
 st.subheader("🔹 פירוט רכיבים, מתחים והספקים")
 
 if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)" and r_details_list:
@@ -441,7 +465,7 @@ if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)" and c
         cc4.metric(f"הספק קיבולי (QC{idx})", f"{q_c_i:.3f} VAR")
         st.write("")
 
-st.write("#### 📐 זוויות ופאזורים במעגל")
+st.write("#### 📐 זוויות ופאזורים במעגל (ערכי RMS)")
 ac1, ac2, ac3 = st.columns(3)
 ac1.metric("מתח מקור וקטורי (V)", f"{V_rms:.3f} ∠ {theta_v:.3f}° V")
 ac2.metric("זרם וקטורי (I)", f"{I_rms:.3f} ∠ {theta_i:.3f}° A")
@@ -458,9 +482,6 @@ st.markdown("---")
 
 # --- חלק ויזואלי 1: גרפי סינוס בזמן ---
 st.subheader("🌊 גרפי סינוס של מתח וזרם בזמן t")
-
-V_peak = V_rms * math.sqrt(2)
-I_peak = I_rms * math.sqrt(2)
 
 f_draw = f if (use_frequency and f) else 50.0
 T = 1 / f_draw
