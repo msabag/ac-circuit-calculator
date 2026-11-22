@@ -20,7 +20,8 @@ DEFAULT_STATE = {
     "use_theta_v": True,
     "theta_v": 68.0,
     "use_frequency": True,
-    "f": 50.0,
+    "freq_type": "תדר f (הרץ - Hz)",
+    "freq_input": 50.0,
     "resistors": [{"val": 21.865, "unit": "Ω"}],
     "inductors": [],
     "capacitors": [{"type": "C (קיבול)", "val": 262.0, "unit": "µF"}],
@@ -120,7 +121,7 @@ st.markdown("""
 col_title, col_duck = st.columns([4, 1])
 with col_title:
     st.title("⚡ מחשבון מעגל AC טורי מרובה רכיבים (R-L-C)")
-    st.write("ניתוח חשמלי מלא בדיוק של 3 ספרות אחרי הנקודה, תמיכה במתח אפקטיבי/מקסימלי והספק לכל רכיב.")
+    st.write("ניתוח חשמלי מלא בדיוק של 3 ספרות אחרי הנקודה, תמיכה במתח אפקטיבי/מקסימלי, תדר f או ω והספק לכל רכיב.")
 
 with col_duck:
     st.markdown("""
@@ -173,13 +174,29 @@ if use_theta_v:
 else:
     theta_v = 0.0
 
-use_frequency = st.sidebar.checkbox("הוסף תדר f (נדרש להמרת L ו-C)", value=bool(st.session_state.use_frequency))
+# בחירת תדר f או אומגה ω
+use_frequency = st.sidebar.checkbox("הוסף תדר f או ω (נדרש להמרת L ו-C)", value=bool(st.session_state.use_frequency))
 st.session_state.use_frequency = use_frequency
+
 if use_frequency:
-    f = st.sidebar.number_input("תדר f (הרץ):", min_value=0.001, value=float(st.session_state.f), format="%.3f")
-    st.session_state.f = f
+    freq_options = ("תדר f (הרץ - Hz)", "תדירות זוויתית ω (rad/s)")
+    f_type_idx = freq_options.index(st.session_state.freq_type) if st.session_state.freq_type in freq_options else 0
+    freq_type = st.sidebar.radio("אופן הזנת התדירות:", freq_options, index=f_type_idx)
+    st.session_state.freq_type = freq_type
+    
+    f_label = "תדר f (הרץ - Hz):" if freq_type == "תדר f (הרץ - Hz)" else "תדירות זוויתית ω (rad/s):"
+    freq_input = st.sidebar.number_input(f_label, min_value=0.001, value=float(st.session_state.freq_input), format="%.3f")
+    st.session_state.freq_input = freq_input
+    
+    if freq_type == "תדר f (הרץ - Hz)":
+        f = freq_input
+        omega = 2 * math.pi * f
+    else:
+        omega = freq_input
+        f = omega / (2 * math.pi)
 else:
     f = None
+    omega = None
 
 # מקדמי המרה ליחידות
 R_MULTIPLIERS = {"Ω": 1.0, "kΩ": 1e3, "MΩ": 1e6, "mΩ": 1e-3}
@@ -238,11 +255,11 @@ if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
             l_unit = col_l_unit.selectbox("יחידה:", l_units_list, index=l_units_list.index(curr_unit), key=f"l_unit_{i}")
             
             l_henrys = l_val * L_MULTIPLIERS[l_unit]
-            if use_frequency and f:
-                xl_ohms = 2 * math.pi * f * l_henrys
+            if use_frequency and omega:
+                xl_ohms = omega * l_henrys
             else:
                 xl_ohms = 0.0
-                st.sidebar.warning("נדרש תדר f כדי לחשב היגוי XL מתוך השראות L")
+                st.sidebar.warning("נדרש תדר f או ω כדי לחשב היגוי XL מתוך השראות L")
             l_details_list.append((i+1, "L", l_val, l_unit, xl_ohms, l_henrys * 1e3))
         else:
             xl_units_list = ["Ω", "kΩ", "mΩ"]
@@ -251,7 +268,7 @@ if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
             l_unit = col_l_unit.selectbox("יחידה:", xl_units_list, index=xl_units_list.index(curr_unit), key=f"l_unit_{i}")
             
             xl_ohms = l_val * X_MULTIPLIERS[l_unit]
-            l_mh_calc = (xl_ohms / (2 * math.pi * f) * 1e3) if (use_frequency and f and xl_ohms > 0) else None
+            l_mh_calc = (xl_ohms / omega * 1e3) if (use_frequency and omega and xl_ohms > 0) else None
             l_details_list.append((i+1, "XL", l_val, l_unit, xl_ohms, l_mh_calc))
             
         st.session_state.inductors[i] = {"type": l_type, "val": l_val, "unit": l_unit}
@@ -284,11 +301,11 @@ if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
             c_unit = col_c_unit.selectbox("יחידה:", c_units_list, index=c_units_list.index(curr_unit), key=f"c_unit_{i}")
             
             c_farads = c_val * C_MULTIPLIERS[c_unit]
-            if use_frequency and f:
-                xc_ohms = 1 / (2 * math.pi * f * c_farads)
+            if use_frequency and omega:
+                xc_ohms = 1 / (omega * c_farads)
             else:
                 xc_ohms = 0.0
-                st.sidebar.warning("נדרש תדר f כדי לחשב היגוי Xc מתוך קיבול C")
+                st.sidebar.warning("נדרש תדר f או ω כדי לחשב היגוי Xc מתוך קיבול C")
             c_details_list.append((i+1, "C", c_val, c_unit, xc_ohms, c_farads * 1e6))
         else:
             xc_units_list = ["Ω", "kΩ", "mΩ"]
@@ -297,7 +314,7 @@ if calc_mode == "חישוב רגיל (לפי רכיבים דינמיים)":
             c_unit = col_c_unit.selectbox("יחידה:", xc_units_list, index=xc_units_list.index(curr_unit), key=f"c_unit_{i}")
             
             xc_ohms = c_val * X_MULTIPLIERS[c_unit]
-            c_uf_calc = (1 / (2 * math.pi * f * xc_ohms) * 1e6) if (use_frequency and f and xc_ohms > 0) else None
+            c_uf_calc = (1 / (omega * xc_ohms) * 1e6) if (use_frequency and omega and xc_ohms > 0) else None
             c_details_list.append((i+1, "Xc", c_val, c_unit, xc_ohms, c_uf_calc))
             
         st.session_state.capacitors[i] = {"type": c_type, "val": c_val, "unit": c_unit}
@@ -368,8 +385,8 @@ else:
     circuit_nature = "קיבולי (Capacitive - זרם מקדים)"
 
 # חישוב L ו-C שקולים
-mH_total = (XL_total / (2 * math.pi * f) * 1e3) if (use_frequency and f and XL_total > 0) else None
-uF_total = (1 / (2 * math.pi * f * Xc_total) * 1e6) if (use_frequency and f and Xc_total > 0) else None
+mH_total = (XL_total / omega * 1e3) if (use_frequency and omega and XL_total > 0) else None
+uF_total = (1 / (omega * Xc_total) * 1e6) if (use_frequency and omega and Xc_total > 0) else None
 
 # חישוב מתחים, זרמי שיא והספקים
 I_peak = I_rms * math.sqrt(2)
@@ -417,12 +434,18 @@ c7.metric("הספק אקטיבי כולל (P)", f"{P:.3f} W")
 c8.metric("הספק ריאקטיבי נטו (Q)", f"{Q_net:.3f} VAR")
 c9.metric("הספק מדומה כולל (S)", f"{S:.3f} VA")
 
+if use_frequency and f and omega:
+    st.write("")
+    cf1, cf2, cf3 = st.columns(3)
+    cf1.metric("תדר (f)", f"{f:.3f} Hz")
+    cf2.metric("תדירות זוויתית (ω)", f"{omega:.3f} rad/s")
+    cf3.metric("היגוי שקול נטו (XL - Xc)", f"{X_net:.3f} Ω")
+
 if mH_total is not None or uF_total is not None:
     st.write("")
-    ce1, ce2, ce3 = st.columns(3)
+    ce1, ce2 = st.columns(2)
     ce1.metric("השראות שקולה (L)", f"{mH_total:.3f} mH" if mH_total is not None else "—")
     ce2.metric("קיבול שקול (C)", f"{uF_total:.3f} µF" if uF_total is not None else "—")
-    ce3.metric("היגוי שקול נטו (XL - Xc)", f"{X_net:.3f} Ω")
 
 st.markdown("---")
 
@@ -511,7 +534,7 @@ lines = line1 + line2
 labels = [l.get_label() for l in lines]
 ax_v.legend(lines, labels, loc='upper right', fontsize=10)
 
-plt.title(f"אותות סינוס בזמן (הפרש מופע φ = {phi_deg_circuit:.3f}°)", fontsize=13, fontweight='bold', pad=10)
+plt.title(f"אותות סינוס בזמן (ω = {omega_draw:.2f} rad/s, φ = {phi_deg_circuit:.3f}°)", fontsize=13, fontweight='bold', pad=10)
 plt.tight_layout()
 st.pyplot(fig_sine)
 
